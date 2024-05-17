@@ -1,0 +1,89 @@
+What is git?
+	• Git is a version control system. 
+	• Git helps you keep track of code changes
+	• Git is used to collaborate on code - Multiple people can work simultaneously.
+
+What is github?
+Github is Web based git repository hosting service.
+
+Github Alternatives:
+	1. BitBucket
+	2. GitBucket
+
+Pre-requisites:
+	1. Create an account for you:
+	2. Download the Visual studio code:
+	3. Install the latest version of git on your machine - Windows
+
+Open your command prompt and type git - Ensure the git is successfully installed or not
+
+Set username and email ID on our local machine
+Git config --global user.name "arajendran3"
+Git config --global user.email "arajendran3@lululemon.com"
+
+Open the visual studio code
+
+Create a new folder on your machine
+
+Open the folder in the visual studio code ( File-->Open folder..)
+
+We already created a repo and file in github. Now we want to bring the file/folder from remote to local
+Command: git clone <<link>>  -> link is something called origin
+Command: cd githubemc1 --->Navigate into the particular folder in your local machine
+Usually .git file will be invisible (Show the hidden files) - It acts a bridge between the remote repository and locally created folder.
+
+    1. Git clone --
+        a. Create/Modify/Delete - Anything we perform after cloning.
+    2. Git add -- Add the respective changes and moved on to the staging area (waiting area)
+    3. Git commit --Move the respective file to git copy folder/local folder
+    4. Git push -- Push the respective file into the global git repository.
+    
+Using the command move the newly created text2.txt from working copy to git copy folder
+Command: git add test2.txt
+
+'U' changed to added 'A' Added
+Command: git status -->To know the status of the command
+
+Now moving the test2.txt file from staging area to local git folder
+Command: git commit -m "test2.txt file added"
+
+To move the test2.txt file from local git folder to remote repository
+Command: git push origin main
+
+
+
+Insert --> Add--> Commit -->Push
+
+Command: git init --> Used to make the folder as git folder | initialize the empty git repository
+Command: git add . -->this . Represents all the changed files
+How does branches work?
+
+Command: git branch -a
+Command: git branch <<branch_name>> --create branch
+Command: git checkout <<branch_name>> --> Switched to new branch
+Command: git diff gitbranch1 (when you are in main branch)
+
+Merging the gitbranch1 with main branch
+Command: git merge gitbranch1
+Then we have to push
+Command: git push origin main
+
+Pull request: 
+Feature provided by github. Cantt perform in terminal. Only performed in UI.
+Manager will review the changes and merge the newbranch to main.
+
+Command: git merge <<new_branch_name>>
+Some issues may occur during Merge process.
+
+Conflict:
+Main branch contains : city = none
+Branch1 branch contains : city = bangalore
+Branch2 branch contains: city = chennai
+If we try to merge branch1 and branch2 with main --> what city will get merged????
+
+Resolve Conflicts:
+
+Code Synchronization:
+ Two different developers uploaded in common place.
+
+What is conventional Commits?
