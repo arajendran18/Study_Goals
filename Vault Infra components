@@ -14,3 +14,5 @@ Autoscaling is the process of automatically scaling computational resources base
 
 Load balancer:
 A load balancer is a system that distributes network requests across multiple servers. It may be a managed service from a cloud provider, a physical network appliance, a piece of software, or a service discovery platform such as Consul
+
+--------------------------------------------------------------------------------------------------------

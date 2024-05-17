@@ -25,3 +25,4 @@ Basically it implements the below:
 Log group: Today you created a project in code build, all the activities that are happening in the project, cloud watch automatically creates a log group and it will log all the information inside the log group only.
 
 Alarms can be configured with SNS topic or any mail alerts or any other application such as pagerduty
+----------------------------------------------------------------------------------------------------
