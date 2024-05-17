@@ -1,0 +1,25 @@
+Cloud watch is a service/gatekeeper/watchman watching the activity happening on AWS cloud. It monitors resources and applications.
+
+Example: Creating EC2 instances, uploading some content in S3 bucket, creating any resources in AWS.
+
+Basically it implements the below:
+	• Monitoring 
+	• Alerting
+	• Reporting
+	• Logging
+
+	1. Monitoring: Biggest advantage in AWS. Cloud watch plays critical role in infrastructure monitoring
+	2. Real life metrics: Metrics - Easy way to communicate
+		a. When you are using EC2 instances, how many API request did my application inside the EC2 instance receive?
+		b. During the last 30 mins, what was the CPU utilization on my AWS EC2 instance  or what was the memory consumption
+	3. Alarms: To take action on the taken metrics outcome
+		a. If the CPU utilization becomes more than 80%, send out an alarm to this email address
+		b. If the CPU utilization reaches than 60%, notify me warning message
+	4. Log insights: It can provide an log - this user/service tried to access your EC2 instance and particular S3 bucket
+	5. Custom metrics: Cloud watch does not monitor the memory utilization. Someone has to configure for the required metrics.
+	6. Cost Optimization: Lambda functions
+	7. Scaling: Cloud watch is not directly perform scaling. But it can integrated with other services (lambda) to perform desired activity.
+
+Log group: Today you created a project in code build, all the activities that are happening in the project, cloud watch automatically creates a log group and it will log all the information inside the log group only.
+
+Alarms can be configured with SNS topic or any mail alerts or any other application such as pagerduty
