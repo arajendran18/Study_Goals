@@ -1,7 +1,12 @@
 What is git?
 	• Git is a version control system. 
+    • It is a Source control Management (SCM)
 	• Git helps you keep track of code changes
 	• Git is used to collaborate on code - Multiple people can work simultaneously.
+
+Git Alternatives:
+    1. SVN
+    2. Mercurial
 
 What is github?
 Github is Web based git repository hosting service.
@@ -9,6 +14,14 @@ Github is Web based git repository hosting service.
 Github Alternatives:
 	1. BitBucket
 	2. GitBucket
+
+Cersion Control System has following categories:
+    1. CVCS - Central Version controlling System
+    2. DVCS - Distributed Version controlling system
+
+Difference between CVCS and DVCS:
+    SVN works based on CVCS - Has only one repository - Internet dependent
+    Git works based on DVCS - 2 repositories local and remote - Internet is only needed during push/pull command
 
 Pre-requisites:
 	1. Create an account for you:
@@ -87,3 +100,24 @@ Code Synchronization:
  Two different developers uploaded in common place.
 
 What is conventional Commits?
+
+
+
+
+Stages:
+
+    1. Requirement Analysis
+    2. Planning
+    3. System Design (High level Diagram and Low Level Diagram) - people learnt UML - Unified Modelling language
+    4. Implementation (Developers involved)
+    5. Testing
+    6. Deployment
+    7. Maintenance
+
+
+Advantages of devops team:
+    • Devops team comes at 6th and 7th stage
+    • Faster Delivery
+    • More revenue
+    • Cost reduction
+    • Effort reduction
