@@ -1,3 +1,5 @@
+Introduction:
+
 Cloud watch is a service/gatekeeper/watchman watching the activity happening on AWS cloud. It monitors resources and applications.
 
 Example: Creating EC2 instances, uploading some content in S3 bucket, creating any resources in AWS.
