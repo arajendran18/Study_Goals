@@ -15,7 +15,7 @@ Github Alternatives:
 	1. BitBucket
 	2. GitBucket
 
-Cersion Control System has following categories:
+Version Control System has following categories:
     1. CVCS - Central Version controlling System
     2. DVCS - Distributed Version controlling system
 
@@ -31,8 +31,8 @@ Pre-requisites:
 Open your command prompt and type git - Ensure the git is successfully installed or not
 
 Set username and email ID on our local machine
-Git config --global user.name "arajendran3"
-Git config --global user.email "arajendran3@lululemon.com"
+Git config --global user.name "<<<username>>>"
+Git config --global user.email "<<example@gmail.com>>"
 
 Open the visual studio code
 
@@ -44,7 +44,9 @@ We already created a repo and file in github. Now we want to bring the file/fold
 Command: git clone <<link>>  -> link is something called origin
 Command: cd githubemc1 --->Navigate into the particular folder in your local machine
 Usually .git file will be invisible (Show the hidden files) - It acts a bridge between the remote repository and locally created folder.
-
+---------------------------------------------------------------------------------------------------------
+Commonly used commands:
+---------------------------------------------------------------------------------------------------------
     1. Git clone --
         a. Create/Modify/Delete - Anything we perform after cloning.
     2. Git add -- Add the respective changes and moved on to the staging area (waiting area)
@@ -67,14 +69,21 @@ Command: git push origin main
 
 Insert --> Add--> Commit -->Push
 
-Command: git init --> Used to make the folder as git folder | initialize the empty git repository
-Command: git add . -->this . Represents all the changed files
+Command: git init          --> Used to make the folder as git folder, initialize the empty git repository
+Command: git status -s     --> To know the status of git -s -Short manner
+Command: git add .         --> This . Represents all the changed files will move to staged area
+Command: git commit -m     --> To Commit with the message
+Command: git log           --> To view the logs information about the commit
+Command: git log --oneline --> To view teh logs information in oneline
+Command: git show <comt_id>-->To view the changes with respective to the commit ID
+Command: git remote add <name> <url>--> To push to destination
+
 How does branches work?
 
-Command: git branch -a
+Command: git branch -a --> To list the branches
 Command: git branch <<branch_name>> --create branch
 Command: git checkout <<branch_name>> --> Switched to new branch
-Command: git diff gitbranch1 (when you are in main branch)
+Command: git diff <<>branch_name>>> (when you are in main branch)
 
 Merging the gitbranch1 with main branch
 Command: git merge gitbranch1
