@@ -19,7 +19,7 @@ variable "instance_type" {
 variable "instance_count" {
    description = "Instance type t2.micro"
    type        = number
-   default     = 1
+   default     = 0
 }
 variable "enable_public_ip" {
   description = "Enable public IP address"
