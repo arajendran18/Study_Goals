@@ -1,0 +1,22 @@
+path "sys/mounts" {
+  capabilities = ["read"]
+}
+
+path "aws/creds/*" {
+  capabilities = ["read"]
+}
+
+path "aws/roles/*" {
+  capabilities = ["list", "read"]
+}
+
+path "aws/config/root" {
+  capabilities = ["read"]
+}
+path "aws-dev/creds/*" {
+  capabilities = ["read"]
+}
+
+path "aws-dev/roles/*" {
+  capabilities = ["list", "read"]
+}
