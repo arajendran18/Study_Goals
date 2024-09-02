@@ -1,0 +1,194 @@
+Certainly! Here’s a detailed explanation of each section of the script:
+
+### Overview
+
+This script is designed to validate AWS secret engines configured in HashiCorp Vault. It does this by:
+1. Listing all AWS secret engines.
+2. Generating AWS credentials using a specified role for each secret engine.
+3. Validating those credentials by attempting to list S3 buckets.
+4. Saving the results to a CSV file.
+
+### Code Breakdown
+
+#### 1. Import Statements
+
+```python
+import time
+import csv
+import requests
+import boto3
+from botocore.exceptions import NoCredentialsError, PartialCredentialsError, ClientError
+```
+
+- `time`: Used to introduce delays.
+- `csv`: Used for writing results to a CSV file.
+- `requests`: Used to make HTTP requests to the Vault API.
+- `boto3`: AWS SDK for Python, used to interact with AWS services like S3.
+- `botocore.exceptions`: Provides exceptions related to AWS credentials and client errors.
+
+#### 2. `generate_aws_credentials` Function
+
+```python
+def generate_aws_credentials(vault_url, vault_token, mount_path, role_name):
+    """Generate AWS credentials using direct API call."""
+    headers = {'X-Vault-Token': vault_token}
+    url = f'{vault_url}/v1/{mount_path}/creds/{role_name}'
+    response = requests.get(url, headers=headers)
+    
+    if response.status_code == 200:
+        data = response.json()
+        access_key = data['data']['access_key'].strip()
+        secret_key = data['data']['secret_key'].strip()
+        return access_key, secret_key
+    else:
+        print(f"Error: {response.status_code} - {response.text}")
+        return None, None
+```
+
+- **Purpose**: Retrieves AWS credentials (access key and secret key) from the Vault secret engine.
+- **Parameters**: 
+  - `vault_url`: URL of the Vault server.
+  - `vault_token`: Token used to authenticate with Vault.
+  - `mount_path`: Path of the AWS secret engine in Vault.
+  - `role_name`: Role for which to generate credentials.
+- **Returns**: Access and secret keys if successful; otherwise, `None` values.
+
+#### 3. `list_s3_buckets` Function
+
+```python
+def list_s3_buckets(access_key, secret_key):
+    """List S3 buckets using the provided AWS credentials."""
+    try:
+        session = boto3.Session(
+            aws_access_key_id=access_key,
+            aws_secret_access_key=secret_key,
+            region_name='us-east-1'  # Change as needed
+        )
+        s3_client = session.client('s3')
+        response = s3_client.list_buckets()
+        bucket_names = [bucket['Name'] for bucket in response['Buckets']]
+        return True, bucket_names
+    except (NoCredentialsError, PartialCredentialsError) as e:
+        print(f"Invalid AWS credentials: {e}")
+        return False, []
+    except ClientError as e:
+        print(f"Client error during AWS operation: {e}")
+        return False, []
+    except Exception as e:
+        print(f"Error listing S3 buckets: {e}")
+        return False, []
+```
+
+- **Purpose**: Verifies the AWS credentials by attempting to list S3 buckets.
+- **Parameters**: 
+  - `access_key`: AWS access key.
+  - `secret_key`: AWS secret key.
+- **Returns**: `True` with bucket names if credentials are valid; otherwise, `False` with an empty list.
+
+#### 4. `list_secret_engines` Function
+
+```python
+def list_secret_engines(vault_url, vault_token):
+    """List all AWS secret engines in Vault."""
+    headers = {'X-Vault-Token': vault_token}
+    url = f'{vault_url}/v1/sys/mounts'
+    response = requests.get(url, headers=headers)
+    
+    if response.status_code == 200:
+        engines = response.json()
+        aws_engines = [mount_path.rstrip('/') for mount_path, details in engines['data'].items() if details['type'] == 'aws']
+        return aws_engines
+    else:
+        print(f"Error listing secret engines: {response.status_code} - {response.text}")
+        return []
+```
+
+- **Purpose**: Lists all AWS secret engines configured in Vault.
+- **Parameters**: 
+  - `vault_url`: URL of the Vault server.
+  - `vault_token`: Token used to authenticate with Vault.
+- **Returns**: List of mount paths for AWS secret engines.
+
+#### 5. `validate_secret_engine` Function
+
+```python
+def validate_secret_engine(vault_url, vault_token, mount_path, role_name):
+    """Validate AWS secret engine by generating credentials and listing S3 buckets."""
+    print(f"\nValidating AWS Secret Engine: {mount_path}/{role_name}")
+    
+    access_key, secret_key = generate_aws_credentials(vault_url, vault_token, mount_path, role_name)
+    
+    if access_key and secret_key:
+        print("AWS Access Key:", access_key)
+        print("AWS Secret Key:", secret_key)
+        
+        time.sleep(8)
+        
+        is_valid, buckets = list_s3_buckets(access_key, secret_key)
+        if is_valid:
+            print(f"Credentials for {mount_path}/{role_name} are valid and working.")
+            return {'mount_path': mount_path, 'role_name': role_name, 'status': 'Success', 'buckets': ', '.join(buckets)}
+        else:
+            print(f"Credentials for {mount_path}/{role_name} are not working as expected.")
+            return {'mount_path': mount_path, 'role_name': role_name, 'status': 'Failed', 'buckets': ''}
+    else:
+        print(f"Failed to retrieve AWS credentials for {mount_path}/{role_name}.")
+        return {'mount_path': mount_path, 'role_name': role_name, 'status': 'Failed to retrieve credentials', 'buckets': ''}
+```
+
+- **Purpose**: Validates an AWS secret engine by generating credentials and testing them.
+- **Parameters**: 
+  - `vault_url`: URL of the Vault server.
+  - `vault_token`: Token used to authenticate with Vault.
+  - `mount_path`: Path of the AWS secret engine.
+  - `role_name`: Role for which to generate credentials.
+- **Returns**: A dictionary with the validation status and bucket names.
+
+#### 6. `main` Function
+
+```python
+def main():
+    # Define Vault server URL and token
+    vault_url = 'http://13.232.30.155:8200'  # Vault server URL
+    vault_token = 'hvs.CAESIIBmIECIbXNc4yYIryUIEzrJwxhXsB-prH4hj7hfljcQGh4KHGh2cy5VYnZTZTRxZllHZnNWRWNyUDJFQU5vTm0'  # Your Vault token
+    
+    # Specify the role name to use for all AWS secret engines
+    role_name = 'vault-aws-role'
+    
+    # List all AWS secret engines
+    secret_engines = list_secret_engines(vault_url, vault_token)
+    
+    # Prepare to store results
+    results = []
+    
+    # Validate all secret engines using the specified role
+    for mount_path in secret_engines:
+        result = validate_secret_engine(vault_url, vault_token, mount_path, role_name)
+        results.append(result)
+    
+    # Write results to CSV file
+    csv_file = 'aws_secret_engine_validation_results.csv'
+    with open(csv_file, 'w', newline='') as csvfile:
+        fieldnames = ['mount_path', 'role_name', 'status', 'buckets']
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+        writer.writeheader()
+        for result in results:
+            writer.writerow(result)
+    
+    print(f"Validation results saved to {csv_file}")
+
+if __name__ == "__main__":
+    main()
+```
+
+- **Purpose**: Entry point of the script.
+- **Steps**:
+  - Define Vault server URL and token.
+  - Specify the AWS role to use.
+  - List AWS secret engines.
+  - Validate each secret engine using the specified role.
+  - Write the validation results to a CSV file.
+
+### Summary
+
+The script automates the process of validating AWS secret engines in Vault by generating AWS credentials, verifying them with S3, and logging the results. Ensure that the Vault token used has the correct permissions to perform these operations, and adjust the `role_name` and other parameters as needed.
