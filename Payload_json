@@ -1,0 +1,13 @@
+{
+    "secret_engines": [
+        {
+            "mount_path": "aws/role1"
+        },
+        {
+            "mount_path": "aws/role2"
+        },
+        {
+            "mount_path": "aws/role3"
+        }
+    ]
+}
