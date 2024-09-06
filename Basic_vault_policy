@@ -1,0 +1,47 @@
+# Allow managing policies (creating, reading, updating, deleting)
+path "sys/policies/acl/*" {
+  capabilities = ["create", "read", "update", "delete", "list"]
+}
+
+# Allow managing authentication methods
+path "auth/*" {
+  capabilities = ["create", "read", "update", "delete", "list"]
+}
+
+# Allow managing secrets engines (enabling, disabling, etc.)
+path "sys/mounts/*" {
+  capabilities = ["create", "read", "update", "delete", "list"]
+}
+
+# Allow reading and writing secrets in any path
+path "secret/data/*" {
+  capabilities = ["create", "read", "update", "delete", "list"]
+}
+
+# Allow managing leases (e.g., revoking and renewing tokens)
+path "sys/leases/*" {
+  capabilities = ["create", "read", "update", "delete", "list"]
+}
+
+# Allow token self-management (renew, revoke)
+path "auth/token/renew-self" {
+  capabilities = ["update"]
+}
+
+path "auth/token/revoke-self" {
+  capabilities = ["update"]
+}
+
+# Allow access to identity management
+path "identity/*" {
+  capabilities = ["create", "read", "update", "delete", "list"]
+}
+
+# Allow managing entities and groups
+path "identity/entity/*" {
+  capabilities = ["create", "read", "update", "delete", "list"]
+}
+
+path "identity/group/*" {
+  capabilities = ["create", "read", "update", "delete", "list"]
+}
