@@ -1,0 +1,71 @@
+import boto3
+import requests
+import json
+import base64
+from botocore.auth import SigV4Auth
+from botocore.awsrequest import AWSRequest
+from botocore.session import get_session
+
+def get_aws_iam_credentials():
+    """Retrieve IAM credentials using STS for AWS Vault authentication."""
+    sts_client = boto3.client('sts')
+    response = sts_client.get_caller_identity()
+    return response
+
+def sign_vault_iam_request(vault_url, iam_role):
+    """Sign the Vault IAM request using SigV4."""
+    session = get_session()
+    credentials = session.get_credentials()
+    region = 'us-east-1'  # Set the appropriate AWS region
+
+    # Create the STS request
+    request = AWSRequest(
+        method='POST',
+        url='https://sts.amazonaws.com/',
+        data='Action=GetCallerIdentity&Version=2011-06-15',
+        headers={'Content-Type': 'application/x-www-form-urlencoded; charset=utf-8'}
+    )
+    
+    # Sign the request using SigV4
+    SigV4Auth(credentials, 'sts', region).add_auth(request)
+    
+    signed_headers = dict(request.headers)
+    signed_request_body = request.body
+
+    # No need to encode if already in bytes format
+    encoded_body = base64.b64encode(signed_request_body).decode('utf-8')
+
+    # Vault login request
+    login_data = {
+        'role': iam_role,
+        'iam_http_request_method': 'POST',
+        'iam_request_url': base64.b64encode(b'https://sts.amazonaws.com').decode('utf-8'),
+        'iam_request_body': encoded_body,
+        'iam_request_headers': base64.b64encode(json.dumps(signed_headers).encode('utf-8')).decode('utf-8')
+    }
+    
+    response = requests.post(f'{vault_url}/v1/auth/aws/login', json=login_data)
+    
+    if response.status_code == 200:
+        return response.json()['auth']['client_token']
+    else:
+        raise Exception(f"Vault Authentication Failed: {response.text}")
+
+def lambda_handler(event, context):
+    vault_url = 'http://13.232.30.155:8200'  # Update with your Vault URL
+    iam_role = 'my_vault_lambda_role'  # Update with your Vault IAM Role
+
+    try:
+        # Authenticate with Vault
+        vault_token = sign_vault_iam_request(vault_url, iam_role)
+        
+        return {
+            'statusCode': 200,
+            'body': json.dumps({'vault_token': vault_token})
+        }
+    
+    except Exception as e:
+        return {
+            'statusCode': 500,
+            'body': json.dumps({'error': str(e)})
+        }
