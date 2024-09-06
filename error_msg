@@ -2,3 +2,8 @@ INIT_REPORT Init Duration: 3009.88 ms	Phase: invoke	Status: timeout
 START RequestId: b7cdd1c7-629f-4afb-876e-2360a47098da Version: $LATEST
 END RequestId: b7cdd1c7-629f-4afb-876e-2360a47098da
 REPORT RequestId: b7cdd1c7-629f-4afb-876e-2360a47098da	Duration: 3000.00 ms	Billed Duration: 3000 ms	Memory Size: 128 MB	Max Memory Used: 63 MB	Status: timeout
+
+{
+  "statusCode": 500,
+  "body": "{\"error\": \"HTTPSConnectionPool(host='npd-esms.lllint.com', port=443): Max retries exceeded with url: /v1/auth/aws/login (Caused by NameResolutionError(\\\"<urllib3.connection.HTTPSConnection object at 0x7f4c30fd0260>: Failed to resolve 'npd-esms.lllint.com' ([Errno -2] Name or service not known)\\\"))\"}"
+}
