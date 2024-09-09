@@ -1,0 +1,10 @@
+{
+  "secret_engines": [
+    {
+      "mount_path": "aws"
+    },
+    {
+      "mount_path": "aws-dev"
+    }
+  ]
+}
