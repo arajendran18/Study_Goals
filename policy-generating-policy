@@ -1,0 +1,38 @@
+path "sys/policies/acl/*" {
+  capabilities = ["create", "update", "delete", "list"]
+}
+path "identity/roles/*" {
+  capabilities = ["create", "update", "read", "delete", "list"]
+}
+path "auth/aws/roles/*" {
+  capabilities = ["read", "update", "create", "delete", "list"]
+}
+path "auth/aws-dev/roles/*" {
+  capabilities = ["read", "update", "create", "delete", "list"]
+}
+
+path "auth/aws/login" {
+  capabilities = ["create", "read"]
+}
+
+# Token management
+path "auth/token/*" {
+  capabilities = ["read", "create", "update"]
+}
+
+# Token lookup for validation
+path "auth/token/lookup-self" {
+  capabilities = ["read"]
+}
+
+# Capabilities check
+path "sys/capabilities-self" {
+  capabilities = ["update"]
+}
+path "auth/aws/role/*" {
+  capabilities = ["create", "update", "read", "list", "delete"]
+}
+
+path "sys/policy/*" {
+  capabilities = ["create", "update", "read", "list", "delete"]
+}
