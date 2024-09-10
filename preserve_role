@@ -1,0 +1,30 @@
+def attach_policy_to_role(vault_url, vault_token, role_name, policy_name, iam_principal_arn):
+    """Attach the created policy to the Vault role in addition to existing policies."""
+    headers = {
+        'X-Vault-Token': vault_token
+    }
+    
+    # Get the current role configuration
+    role_response = requests.get(f'{vault_url}/v1/auth/aws/role/{role_name}', headers=headers)
+    if role_response.status_code != 200:
+        raise Exception(f"Error retrieving role configuration: {role_response.text}")
+    
+    role_data = role_response.json().get('data', {})
+    current_policies = role_data.get('policies', [])
+
+    # Add the new policy to the existing policies, ensuring no duplicates
+    if policy_name not in current_policies:
+        current_policies.append(policy_name)
+    
+    # Preserve other role configurations (bound_iam_principal_arn, auth_type, etc.)
+    updated_role_data = {
+        'policies': current_policies,
+        'bound_iam_principal_arn': role_data.get('bound_iam_principal_arn', iam_principal_arn),
+        'auth_type': role_data.get('auth_type', 'iam')  # Use existing auth_type or default to 'iam'
+    }
+    
+    # Update the role with the new list of policies, preserving other settings
+    update_response = requests.post(f'{vault_url}/v1/auth/aws/role/{role_name}', headers=headers, json=updated_role_data)
+    
+    if update_response.status_code != 204:
+        raise Exception(f"Error updating role with new policies: {update_response.text}")
