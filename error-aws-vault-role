@@ -1,0 +1,4 @@
+Error: error writing AWS auth backend role "auth/aws/role/esms-prd-lambda-aws-secret-validation": Error making API request. URL: PUT https://prd-esms.lllint.com/v1/auth/aws/role/esms-prd-lambda-aws-secret-validation Code: 400. Errors: * at least one bound parameter should be specified on the role
+with vault_aws_auth_backend_role.esms-prd-lambda-aws-secret-validation
+on team_esms.tf line 62, in resource "vault_aws_auth_backend_role" "esms-prd-lambda-aws-secret-validation":
+resource "vault_aws_auth_backend_role" "esms-prd-lambda-aws-secret-validation" {
