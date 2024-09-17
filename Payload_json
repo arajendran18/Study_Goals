@@ -1,13 +1,8 @@
 {
-    "secret_engines": [
-        {
-            "mount_path": "aws/role1"
-        },
-        {
-            "mount_path": "aws/role2"
-        },
-        {
-            "mount_path": "aws/role3"
-        }
+  "Input": {
+    "SecretEngines": [
+      "infra-npd-123456789012-aws",
+      "infra-prod-987654321098-aws"
     ]
+  }
 }
