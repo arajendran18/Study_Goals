@@ -1,16 +1,8 @@
 {
-  "errorMessage": "'LOG_LEVEL'",
-  "errorType": "KeyError",
+  "errorMessage": "Syntax error in module 'lambda_function': expected 'except' or 'finally' block (lambda_function.py, line 220)",
+  "errorType": "Runtime.UserCodeSyntaxError",
   "requestId": "",
   "stackTrace": [
-    "  File \"/var/lang/lib/python3.12/importlib/__init__.py\", line 90, in import_module\n    return _bootstrap._gcd_import(name[level:], package, level)\n",
-    "  File \"<frozen importlib._bootstrap>\", line 1387, in _gcd_import\n",
-    "  File \"<frozen importlib._bootstrap>\", line 1360, in _find_and_load\n",
-    "  File \"<frozen importlib._bootstrap>\", line 1331, in _find_and_load_unlocked\n",
-    "  File \"<frozen importlib._bootstrap>\", line 935, in _load_unlocked\n",
-    "  File \"<frozen importlib._bootstrap_external>\", line 995, in exec_module\n",
-    "  File \"<frozen importlib._bootstrap>\", line 488, in _call_with_frames_removed\n",
-    "  File \"/var/task/lambda_function.py\", line 33, in <module>\n    LOG_LEVEL = os.environ['LOG_LEVEL']\n",
-    "  File \"<frozen os>\", line 714, in __getitem__\n"
+    "  File \"/var/task/lambda_function.py\" Line 220\n                LOGGER"
   ]
 }
