@@ -1,9 +1,16 @@
-INIT_REPORT Init Duration: 3009.88 ms	Phase: invoke	Status: timeout
-START RequestId: b7cdd1c7-629f-4afb-876e-2360a47098da Version: $LATEST
-END RequestId: b7cdd1c7-629f-4afb-876e-2360a47098da
-REPORT RequestId: b7cdd1c7-629f-4afb-876e-2360a47098da	Duration: 3000.00 ms	Billed Duration: 3000 ms	Memory Size: 128 MB	Max Memory Used: 63 MB	Status: timeout
-
 {
-  "statusCode": 500,
-  "body": "{\"error\": \"HTTPSConnectionPool(host='npd-esms.lllint.com', port=443): Max retries exceeded with url: /v1/auth/aws/login (Caused by NameResolutionError(\\\"<urllib3.connection.HTTPSConnection object at 0x7f4c30fd0260>: Failed to resolve 'npd-esms.lllint.com' ([Errno -2] Name or service not known)\\\"))\"}"
+  "errorMessage": "'LOG_LEVEL'",
+  "errorType": "KeyError",
+  "requestId": "",
+  "stackTrace": [
+    "  File \"/var/lang/lib/python3.12/importlib/__init__.py\", line 90, in import_module\n    return _bootstrap._gcd_import(name[level:], package, level)\n",
+    "  File \"<frozen importlib._bootstrap>\", line 1387, in _gcd_import\n",
+    "  File \"<frozen importlib._bootstrap>\", line 1360, in _find_and_load\n",
+    "  File \"<frozen importlib._bootstrap>\", line 1331, in _find_and_load_unlocked\n",
+    "  File \"<frozen importlib._bootstrap>\", line 935, in _load_unlocked\n",
+    "  File \"<frozen importlib._bootstrap_external>\", line 995, in exec_module\n",
+    "  File \"<frozen importlib._bootstrap>\", line 488, in _call_with_frames_removed\n",
+    "  File \"/var/task/lambda_function.py\", line 33, in <module>\n    LOG_LEVEL = os.environ['LOG_LEVEL']\n",
+    "  File \"<frozen os>\", line 714, in __getitem__\n"
+  ]
 }
