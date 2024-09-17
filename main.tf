@@ -189,7 +189,7 @@ def lambda_handler(event, context):
     try:
         # Authenticate to Vault using AWS IAM Auth Method
         vault_token = sign_vault_iam_request(vault_url, vault_aws_auth_role)
-        print(f"Vault Client Token is successfully generated")
+        LOGGER.info("Vault Client Token is successfully generated")
 
         # Create a Vault policy dynamically based on the mount paths
         create_vault_policy(vault_url, vault_token, vault_dynamic_policy, aws_mount_paths)
@@ -199,7 +199,7 @@ def lambda_handler(event, context):
 
         # Re-authenticate to Vault after the policy attachment
         vault_token = sign_vault_iam_request(vault_url, vault_aws_auth_role)
-        print(f"Updated Vault Client Token is successfully generated")
+        LOGGER.info("Updated Vault Client Token is successfully generated")
 
         # Generate AWS credentials from each AWS secret engine using the new token
         for mount_path in aws_mount_paths:
@@ -207,14 +207,16 @@ def lambda_handler(event, context):
 
             # Validate if AWS credentials are generated
             if access_key and secret_key:
-                print(f"Access Key and Secret key successfully generated")
-                LOGGER.debug(f"Validation successful for mount path: {mount_path}")
+                LOGGER.info(f"Access Key and Secret key successfully generated for mount path: {mount_path}")
             else:
                 LOGGER.debug(f"Failed to generate AWS credentials for mount path: {mount_path}")
 
         # Delete the dynamic policy after the test
         delete_response = requests.delete(f'{vault_url}/v1/sys/policies/acl/{vault_dynamic_policy}', headers={'X-Vault-Token': vault_token})
         if delete_response.status_code == 204:
-            print("The temporary provisioned policy to perform this testing has been deleted.")
+            LOGGER.info("The temporary provisioned policy to perform this testing has been deleted.")
         else:
-            LOGGER
+            LOGGER.error(f"Error deleting the policy: {delete_response.text}")
+
+    except Exception as e:
+        LOGGER.error(f"An error occurred: {str(e)}")
