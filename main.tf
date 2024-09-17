@@ -69,6 +69,7 @@ def check_mount_path_exists(vault_url, vault_token, mount_path):
         if f"{mount_path}/" in mounts:
             return True
         else:
+            LOGGER.debug(f"Mount path '{mount_path}' does not exist.")
             return False
     else:
         raise Exception(f"Error listing mount paths: {response.text}")
@@ -178,7 +179,14 @@ def lambda_handler(event, context):
     # vault_aws_auth_role = 'esms-prd-lambda-aws-secret-validation'
 
     # Read JSON payload input to fetch the secret engines
-    aws_mount_paths = event["Input"]["SecretEngines"]
+    try:
+        aws_mount_paths = event["Input"]["SecretEngines"]
+    except KeyError as e:
+        LOGGER.error(f"KeyError: {e}")
+        return {
+            'statusCode': 400,
+            'body': json.dumps({'error': f"Missing key in event payload: {e}"})
+        }
 
     # Default role is used for generating access credentials
     aws_secret_engine_role = 'readonly'
@@ -209,7 +217,7 @@ def lambda_handler(event, context):
             if access_key and secret_key:
                 LOGGER.info(f"Access Key and Secret key successfully generated for mount path: {mount_path}")
             else:
-                LOGGER.debug(f"Failed to generate AWS credentials for mount path: {mount_path}")
+                LOGGER.warning(f"Failed to generate AWS credentials for mount path: {mount_path}")
 
         # Delete the dynamic policy after the test
         delete_response = requests.delete(f'{vault_url}/v1/sys/policies/acl/{vault_dynamic_policy}', headers={'X-Vault-Token': vault_token})
@@ -218,5 +226,14 @@ def lambda_handler(event, context):
         else:
             LOGGER.error(f"Error deleting the policy: {delete_response.text}")
 
+        return {
+            'statusCode': 200,
+            'body': json.dumps({'SecretValidationResponse': 'AWS Secret Engine validation successful.'})
+        }
+
     except Exception as e:
         LOGGER.error(f"An error occurred: {str(e)}")
+        return {
+            'statusCode': 500,
+            'body': json.dumps({'error': str(e)})
+        }
