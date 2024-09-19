@@ -1,0 +1,4 @@
+# Add the new path for sys/policies/acl with full capabilities
+    policy_content += 'path "sys/policies/acl/*" {\n'
+    policy_content += '  capabilities = ["create", "update", "read", "delete", "list"]\n'
+    policy_content += '}\n'
