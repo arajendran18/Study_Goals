@@ -1,3 +1,25 @@
+# ESMS Validation Script placeholder
+"""
+ESMS Automated Access Keys Rotation: Execute ESMS Validation Script
+
+Step Functions
+--------------
+Workflow: lllaws-esms-jit-backend-job-{env}
+Step #: 5
+
+Description
+----------
+This lambda will execute on AWS accounts where Access Keys have been rotated. It validates the authentication between AWS Account and Secret Mount is valid. 
+
+Parameters
+----------
+(none)
+
+Returns
+-------
+  event['Input']
+"""
+
 import boto3
 import json
 import base64
@@ -8,12 +30,13 @@ from botocore.auth import SigV4Auth
 from botocore.awsrequest import AWSRequest
 from botocore.session import get_session
 
-# Set up logging
-LOG_LEVEL = os.environ.get('LOG_LEVEL', 'ERROR')  # Default to 'ERROR' if LOG_LEVEL is not set
+LOG_LEVEL = os.environ['LOG_LEVEL']
 LOGGER = logging.getLogger()
-LOGGER.setLevel(getattr(logging, LOG_LEVEL.upper(), logging.ERROR))  # Default to ERROR if an invalid level is provided
-LOGGER.info(f"Log level set to {LOG_LEVEL}")
-
+if LOG_LEVEL == 'log_level':
+    LOGGER.setLevel(LOG_LEVEL)
+    LOGGER.info("Log level set to %s" % LOGGER.getEffectiveLevel())
+else:
+    LOGGER.setLevel(logging.ERROR)
 logging.getLogger('boto3').setLevel(logging.CRITICAL)
 logging.getLogger('botocore').setLevel(logging.CRITICAL)
 
@@ -69,7 +92,6 @@ def check_mount_path_exists(vault_url, vault_token, mount_path):
         if f"{mount_path}/" in mounts:
             return True
         else:
-            LOGGER.debug(f"Mount path '{mount_path}' does not exist.")
             return False
     else:
         raise Exception(f"Error listing mount paths: {response.text}")
@@ -165,10 +187,11 @@ def generate_aws_credentials(vault_url, vault_token, mount_path, aws_secret_engi
             raise Exception(f"Error generating AWS credentials: {response.text}")
     else:
         # If mount path does not exist, print an error message
-        LOGGER.debug(f"This account '{mount_path}' is not available in '{vault_url}' AWS secret engine")
+        LOGGER.info(f"This account '{mount_path}' is not available in '{vault_url}' AWS secret engine")
         return None, None
 
 def lambda_handler(event, context):
+
     # Please use the respective vault URL and vault IAM role
     # NON-PROD URL and vault IAM role
     vault_url = 'https://npd-esms.lllint.com'
@@ -179,14 +202,8 @@ def lambda_handler(event, context):
     # vault_aws_auth_role = 'esms-prd-lambda-aws-secret-validation'
 
     # Read JSON payload input to fetch the secret engines
-    try:
-        aws_mount_paths = event["Input"]["SecretEngines"]
-    except KeyError as e:
-        LOGGER.error(f"KeyError: {e}")
-        return {
-            'statusCode': 400,
-            'body': json.dumps({'error': f"Missing key in event payload: {e}"})
-        }
+    # aws_mount_paths = event.get('SecretEngines', [])
+    aws_mount_paths = event["Input"]["SecretEngines"]
 
     # Default role is used for generating access credentials
     aws_secret_engine_role = 'readonly'
@@ -197,7 +214,7 @@ def lambda_handler(event, context):
     try:
         # Authenticate to Vault using AWS IAM Auth Method
         vault_token = sign_vault_iam_request(vault_url, vault_aws_auth_role)
-        LOGGER.info("Vault Client Token is successfully generated")
+        print(f"Vault Client Token is successfully generated")
 
         # Create a Vault policy dynamically based on the mount paths
         create_vault_policy(vault_url, vault_token, vault_dynamic_policy, aws_mount_paths)
@@ -207,7 +224,7 @@ def lambda_handler(event, context):
 
         # Re-authenticate to Vault after the policy attachment
         vault_token = sign_vault_iam_request(vault_url, vault_aws_auth_role)
-        LOGGER.info("Updated Vault Client Token is successfully generated")
+        print(f"Updated Vault Client Token is successfully generated")
 
         # Generate AWS credentials from each AWS secret engine using the new token
         for mount_path in aws_mount_paths:
@@ -215,25 +232,23 @@ def lambda_handler(event, context):
 
             # Validate if AWS credentials are generated
             if access_key and secret_key:
-                LOGGER.info(f"Access Key and Secret key successfully generated for mount path: {mount_path}")
+                print(f"Access Key and Secret key successfully generated")
+                LOGGER.debug(f"Validation successful for mount path: {mount_path}")
             else:
-                LOGGER.warning(f"Failed to generate AWS credentials for mount path: {mount_path}")
+                LOGGER.debug(f"Failed to generate AWS credentials for mount path: {mount_path}")
+
 
         # Delete the dynamic policy after the test
         delete_response = requests.delete(f'{vault_url}/v1/sys/policies/acl/{vault_dynamic_policy}', headers={'X-Vault-Token': vault_token})
         if delete_response.status_code == 204:
-            LOGGER.info("The temporary provisioned policy to perform this testing has been deleted.")
+            print("The temporary provisioned policy to perform this testing has been deleted.")
         else:
-            LOGGER.error(f"Error deleting the policy: {delete_response.text}")
+            LOGGER.debug(f"Failed to delete the dynamic policy: {delete_response.text}")
 
-        return {
-            'statusCode': 200,
-            'body': json.dumps({'SecretValidationResponse': 'AWS Secret Engine validation successful.'})
-        }
+        event['Input']['SecretValidationResponse'] = 'AWS Secret Engine validation successful.'
+        return event['Input']
 
     except Exception as e:
-        LOGGER.error(f"An error occurred: {str(e)}")
-        return {
-            'statusCode': 500,
-            'body': json.dumps({'error': str(e)})
-        }
+        LOGGER.debug(f"Validation script failed with an error message : {str(e)}")
+        return 500
+ 
