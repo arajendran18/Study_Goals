@@ -1,8 +1,9 @@
 {
-  "errorMessage": "Syntax error in module 'lambda_function': expected 'except' or 'finally' block (lambda_function.py, line 220)",
-  "errorType": "Runtime.UserCodeSyntaxError",
-  "requestId": "",
+  "errorMessage": "Error deleting Vault policy: {\"errors\":[\"permission denied\"]}\n",
+  "errorType": "Exception",
+  "requestId": "888c9827-e013-4700-894e-719c45769f5d",
   "stackTrace": [
-    "  File \"/var/task/lambda_function.py\" Line 220\n                LOGGER"
+    "  File \"/var/task/lambda_function.py\", line 270, in lambda_handler\n    delete_vault_policy(prd_vault_url, vault_token, vault_dynamic_policy)\n",
+    "  File \"/var/task/lambda_function.py\", line 147, in delete_vault_policy\n    raise Exception(f\"Error deleting Vault policy: {response.text}\")\n"
   ]
 }
