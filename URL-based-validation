@@ -1,0 +1,133 @@
+# ESMS Validation Script with npd and prd Vault URL check
+import boto3
+import json
+import base64
+import requests
+import logging
+import os
+from botocore.auth import SigV4Auth
+from botocore.awsrequest import AWSRequest
+from botocore.session import get_session
+
+LOG_LEVEL = os.environ['LOG_LEVEL']
+LOGGER = logging.getLogger()
+if LOG_LEVEL == 'log_level':
+    LOGGER.setLevel(LOG_LEVEL)
+    LOGGER.info("Log level set to %s" % LOGGER.getEffectiveLevel())
+else:
+    LOGGER.setLevel(logging.ERROR)
+logging.getLogger('boto3').setLevel(logging.CRITICAL)
+logging.getLogger('botocore').setLevel(logging.CRITICAL)
+
+# Vault URLs and IAM roles for both environments
+npd_vault_url = 'https://npd-esms.lllint.com'
+npd_vault_aws_auth_role = 'esms-npd-lambda-aws-secret-validation'
+
+prd_vault_url = 'https://prd-esms.lllint.com'
+prd_vault_aws_auth_role = 'esms-prd-lambda-aws-secret-validation'
+
+def sign_vault_iam_request(vault_url, vault_aws_auth_role):
+    """Authenticate to Vault using AWS IAM Authentication."""
+    session = get_session()
+    credentials = session.get_credentials()
+    region = 'us-east-1'  # Update with your AWS region
+
+    # Create the STS request
+    request = AWSRequest(
+        method='POST',
+        url='https://sts.amazonaws.com/',
+        data='Action=GetCallerIdentity&Version=2011-06-15',
+        headers={'Content-Type': 'application/x-www-form-urlencoded; charset=utf-8'}
+    )
+
+    # Sign the request using SigV4
+    SigV4Auth(credentials, 'sts', region).add_auth(request)
+
+    signed_headers = dict(request.headers)
+    signed_request_body = request.body
+    encoded_body = base64.b64encode(signed_request_body).decode('utf-8')
+
+    # Vault login request
+    login_data = {
+        'role': vault_aws_auth_role,
+        'iam_http_request_method': 'POST',
+        'iam_request_url': base64.b64encode(b'https://sts.amazonaws.com').decode('utf-8'),
+        'iam_request_body': encoded_body,
+        'iam_request_headers': base64.b64encode(json.dumps(signed_headers).encode('utf-8')).decode('utf-8')
+    }
+
+    response = requests.post(f'{vault_url}/v1/auth/aws/login', json=login_data)
+
+    if response.status_code == 200:
+        return response.json()['auth']['client_token']
+    else:
+        raise Exception(f"Vault Authentication Failed: {response.text}")
+
+def check_mount_path_exists(vault_url, vault_token, mount_path):
+    """Check if the specified mount path exists in Vault."""
+    headers = {
+        'X-Vault-Token': vault_token
+    }
+
+    response = requests.get(f'{vault_url}/v1/sys/mounts', headers=headers)
+
+    if response.status_code == 200:
+        mounts = response.json()
+        if f"{mount_path}/" in mounts:
+            return True
+        else:
+            return False
+    else:
+        raise Exception(f"Error listing mount paths: {response.text}")
+
+def generate_aws_credentials(vault_url, vault_token, mount_path, aws_secret_engine_role):
+    """Generate AWS credentials using the Vault AWS secret engine."""
+    headers = {
+        'X-Vault-Token': vault_token
+    }
+
+    response = requests.get(f'{vault_url}/v1/{mount_path}/creds/{aws_secret_engine_role}', headers=headers)
+
+    if response.status_code == 200:
+        data = response.json()
+        access_key = data['data']['access_key'].strip()
+        secret_key = data['data']['secret_key'].strip()
+        return access_key, secret_key
+    else:
+        raise Exception(f"Error generating AWS credentials: {response.text}")
+
+def lambda_handler(event, context):
+
+    # Read JSON payload input to fetch the secret engines
+    aws_mount_paths = event["Input"]["SecretEngines"]
+
+    aws_secret_engine_role = 'readonly'
+
+    for mount_path in aws_mount_paths:
+        # Try with NPD Vault
+        try:
+            npd_vault_token = sign_vault_iam_request(npd_vault_url, npd_vault_aws_auth_role)
+            if check_mount_path_exists(npd_vault_url, npd_vault_token, mount_path):
+                access_key, secret_key = generate_aws_credentials(npd_vault_url, npd_vault_token, mount_path, aws_secret_engine_role)
+                if access_key and secret_key:
+                    print(f"Access Key and Secret Key successfully generated from NPD Vault for mount path: {mount_path}")
+                continue  # Move to the next mount path after successful generation
+            else:
+                print(f"Mount path {mount_path} not found in NPD Vault. Trying PRD Vault...")
+        except Exception as e:
+            LOGGER.error(f"Error with NPD Vault for mount path {mount_path}: {str(e)}")
+
+        # Try with PRD Vault
+        try:
+            prd_vault_token = sign_vault_iam_request(prd_vault_url, prd_vault_aws_auth_role)
+            if check_mount_path_exists(prd_vault_url, prd_vault_token, mount_path):
+                access_key, secret_key = generate_aws_credentials(prd_vault_url, prd_vault_token, mount_path, aws_secret_engine_role)
+                if access_key and secret_key:
+                    print(f"Access Key and Secret Key successfully generated from PRD Vault for mount path: {mount_path}")
+            else:
+                print(f"Mount path {mount_path} not found in PRD Vault either.")
+        except Exception as e:
+            LOGGER.error(f"Error with PRD Vault for mount path {mount_path}: {str(e)}")
+
+    event['Input']['SecretValidationResponse'] = 'AWS Secret Engine validation completed.'
+    return event['Input']
