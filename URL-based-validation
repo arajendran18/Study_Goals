@@ -1,4 +1,3 @@
-# ESMS Validation Script placeholder
 """
 ESMS Automated Access Keys Rotation: Execute ESMS Validation Script
 
@@ -40,6 +39,15 @@ else:
 logging.getLogger('boto3').setLevel(logging.CRITICAL)
 logging.getLogger('botocore').setLevel(logging.CRITICAL)
 
+# Vault URLs for Non-Prod and Prod environments
+VAULT_NPD_URL = 'https://npd-esms.lllint.com'
+VAULT_PRD_URL = 'https://prd-esms.lllint.com'
+
+# Vault IAM Auth roles for Non-Prod and Prod environments
+VAULT_NPD_ROLE = 'esms-npd-lambda-aws-secret-validation'
+VAULT_PRD_ROLE = 'esms-prd-lambda-aws-secret-validation'
+
+
 def sign_vault_iam_request(vault_url, vault_aws_auth_role):
     """Authenticate to Vault using AWS IAM Authentication."""
     session = get_session()
@@ -77,6 +85,7 @@ def sign_vault_iam_request(vault_url, vault_aws_auth_role):
     else:
         raise Exception(f"Vault Authentication Failed: {response.text}")
 
+
 def check_mount_path_exists(vault_url, vault_token, mount_path):
     """Check if the specified mount path exists in Vault."""
     headers = {
@@ -96,76 +105,6 @@ def check_mount_path_exists(vault_url, vault_token, mount_path):
     else:
         raise Exception(f"Error listing mount paths: {response.text}")
 
-def create_vault_policy(vault_url, vault_token, vault_dynamic_policy, aws_mount_paths):
-    """Create a Vault policy dynamically for AWS secret engines."""
-    headers = {
-        'X-Vault-Token': vault_token
-    }
-
-    # Initialize policy content
-    policy_content = ''
-
-    # Create paths based on the provided mount paths
-    creds_paths = set()
-    roles_paths = set()
-    for path in aws_mount_paths:
-        creds_paths.add(f'{path}/creds/*')
-        roles_paths.add(f'{path}/roles/*')
-
-    # Add paths for creds with additional "update" capability
-    for path in sorted(creds_paths):
-        policy_content += f'path "{path}" {{\n'
-        policy_content += '  capabilities = ["read", "list", "update"]\n'
-        policy_content += '}\n\n'
-
-    # Add paths for roles
-    for path in sorted(roles_paths):
-        policy_content += f'path "{path}" {{\n'
-        policy_content += '  capabilities = ["read", "list"]\n'
-        policy_content += '}\n'
-
-    # Add the path for sys/mounts with read capability
-    policy_content += 'path "sys/mounts" {\n'
-    policy_content += '  capabilities = ["read"]\n'
-    policy_content += '}\n'
-
-    # Write the policy to Vault
-    policy_data = {
-        'policy': policy_content.strip()  # Strip trailing newline
-    }
-    response = requests.put(f'{vault_url}/v1/sys/policies/acl/{vault_dynamic_policy}', headers=headers, json=policy_data)
-
-    if response.status_code != 204:
-        raise Exception(f"Error creating Vault policy: {response.text}")
-
-def attach_policy_to_role(vault_url, vault_token, vault_aws_auth_role, vault_dynamic_policy):
-    """Attach the created policy to the Vault role in addition to existing policies."""
-    headers = {
-        'X-Vault-Token': vault_token
-    }
-
-    # Get the current role configuration
-    role_response = requests.get(f'{vault_url}/v1/auth/aws/role/{vault_aws_auth_role}', headers=headers)
-    if role_response.status_code != 200:
-        raise Exception(f"Error retrieving role configuration: {role_response.text}")
-
-    role_data = role_response.json().get('data', {})
-    current_policies = role_data.get('token_policies', [])
-
-    # Ensure the new policy is added without replacing existing ones
-    if vault_dynamic_policy not in current_policies:
-        current_policies.append(vault_dynamic_policy)
-
-    # Preserve other role configurations (bound_iam_principal_arn, auth_type, etc.)
-    updated_role_data = {
-        'policies': current_policies
-    }
-
-    # Update the role with the new list of policies
-    update_response = requests.post(f'{vault_url}/v1/auth/aws/role/{vault_aws_auth_role}', headers=headers, json=updated_role_data)
-
-    if update_response.status_code != 204:
-        raise Exception(f"Error updating role with new policies: {update_response.text}")
 
 def generate_aws_credentials(vault_url, vault_token, mount_path, aws_secret_engine_role):
     """Generate AWS credentials using the Vault AWS secret engine."""
@@ -190,42 +129,55 @@ def generate_aws_credentials(vault_url, vault_token, mount_path, aws_secret_engi
         LOGGER.info(f"This account '{mount_path}' is not available in '{vault_url}' AWS secret engine")
         return None, None
 
-def validate_mount_in_both_environments(npd_vault_url, prd_vault_url, vault_aws_auth_role, mount_path, aws_secret_engine_role):
-    """Check if mount path exists in npd, then prd, and generate credentials if found."""
+
+def validate_credentials_in_both_environments(mount_path, aws_secret_engine_role):
+    """Check for mount path in NPD, then PRD environment, and generate AWS credentials."""
     try:
         # Authenticate to NPD Vault
-        npd_vault_token = sign_vault_iam_request(npd_vault_url, vault_aws_auth_role)
-        if check_mount_path_exists(npd_vault_url, npd_vault_token, mount_path):
-            return generate_aws_credentials(npd_vault_url, npd_vault_token, mount_path, aws_secret_engine_role)
-        else:
-            # Authenticate to PRD Vault
-            prd_vault_token = sign_vault_iam_request(prd_vault_url, vault_aws_auth_role)
-            if check_mount_path_exists(prd_vault_url, prd_vault_token, mount_path):
-                return generate_aws_credentials(prd_vault_url, prd_vault_token, mount_path, aws_secret_engine_role)
-            else:
-                # Mount path not found in either environment
-                LOGGER.info(f"Mount path '{mount_path}' not available in both environments")
-                return None, None
-    except Exception as e:
-        LOGGER.debug(f"Failed to validate mount path '{mount_path}': {str(e)}")
-        return None, None
-
-def lambda_handler(event, context):
-
-    # Vault URLs for non-prod (npd) and prod (prd)
-    npd_vault_url = 'https://npd-esms.lllint.com'
-    prd_vault_url = 'https://prd-esms.lllint.com'
-    vault_aws_auth_role = 'esms-backend'
-
-    # List of secret engines and their respective roles from the payload
-    secret_engines = event['secret_engines']  # Example: ['infra-npd-520849555508-aws']
-    aws_secret_engine_role = 'readonly'
-    
-    for mount_path in secret_engines:
-        # Try to validate mount in both environments
-        access_key, secret_key = validate_mount_in_both_environments(npd_vault_url, prd_vault_url, vault_aws_auth_role, mount_path, aws_secret_engine_role)
+        npd_vault_token = sign_vault_iam_request(VAULT_NPD_URL, VAULT_NPD_ROLE)
+        access_key, secret_key = generate_aws_credentials(VAULT_NPD_URL, npd_vault_token, mount_path, aws_secret_engine_role)
 
         if access_key and secret_key:
-            LOGGER.info(f"AWS Credentials generated for {mount_path}: AccessKey: {access_key}, SecretKey: {secret_key}")
+            LOGGER.info(f"Credentials generated from NPD environment for mount path: {mount_path}")
+            return access_key, secret_key
         else:
-            LOGGER.info(f"Failed to generate credentials for {mount_path}")
+            # Try in PRD environment if not found in NPD
+            prd_vault_token = sign_vault_iam_request(VAULT_PRD_URL, VAULT_PRD_ROLE)
+            access_key, secret_key = generate_aws_credentials(VAULT_PRD_URL, prd_vault_token, mount_path, aws_secret_engine_role)
+
+            if access_key and secret_key:
+                LOGGER.info(f"Credentials generated from PRD environment for mount path: {mount_path}")
+                return access_key, secret_key
+            else:
+                LOGGER.info(f"Mount path '{mount_path}' not found in both NPD and PRD environments.")
+                return None, None
+
+    except Exception as e:
+        LOGGER.error(f"Error during validation: {str(e)}")
+        return None, None
+
+
+def lambda_handler(event, context):
+    # Read JSON payload input to fetch the secret engines
+    aws_mount_paths = event["Input"]["SecretEngines"]
+
+    # Default role is used for generating access credentials
+    aws_secret_engine_role = 'readonly'
+
+    try:
+        # Generate AWS credentials from each AWS secret engine
+        for mount_path in aws_mount_paths:
+            access_key, secret_key = validate_credentials_in_both_environments(mount_path, aws_secret_engine_role)
+
+            # Validate if AWS credentials are generated
+            if access_key and secret_key:
+                LOGGER.info(f"Access Key and Secret key successfully generated for mount path: {mount_path}")
+            else:
+                LOGGER.info(f"Failed to generate AWS credentials for mount path: {mount_path}")
+
+        event['Input']['SecretValidationResponse'] = 'AWS Secret Engine validation completed.'
+        return event['Input']
+
+    except Exception as e:
+        LOGGER.error(f"Validation script failed with error: {str(e)}")
+        return {'statusCode': 500, 'body': f"Validation script failed with error: {str(e)}"}
