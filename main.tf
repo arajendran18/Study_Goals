@@ -251,4 +251,3 @@ def lambda_handler(event, context):
     except Exception as e:
         LOGGER.debug(f"Validation script failed with an error message : {str(e)}")
         return 500
- 
