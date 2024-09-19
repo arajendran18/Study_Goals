@@ -1,0 +1,82 @@
+def lambda_handler(event, context):
+
+    # Non-Production (npd) and Production (prd) Vault URLs and AWS Auth roles
+    npd_vault_url = 'https://npd-esms.lllint.com'
+    prd_vault_url = 'https://prd-esms.lllint.com'
+    npd_vault_aws_auth_role = 'esms-npd-lambda-aws-secret-validation'
+    prd_vault_aws_auth_role = 'esms-prd-lambda-aws-secret-validation'
+
+    # Read JSON payload input to fetch the secret engines
+    aws_mount_paths = event["Input"]["SecretEngines"]
+
+    # Default role is used for generating access credentials
+    aws_secret_engine_role = 'readonly'
+
+    # Dynamic policy generated on each run
+    vault_dynamic_policy = 'aws_secret_validation_dynamic_policy'
+
+    # Track which environments are used for validation
+    validated_npd = False
+    validated_prd = False
+
+    try:
+        # First authenticate to non-production (npd) Vault
+        vault_token = sign_vault_iam_request(npd_vault_url, npd_vault_aws_auth_role)
+        print(f"Vault Client Token is successfully generated for npd")
+
+        # Create a Vault policy dynamically based on the mount paths
+        create_vault_policy(npd_vault_url, vault_token, vault_dynamic_policy, aws_mount_paths)
+
+        # Attach the dynamic policy to the npd Vault role
+        attach_policy_to_role(npd_vault_url, vault_token, npd_vault_aws_auth_role, vault_dynamic_policy)
+
+        # Re-authenticate to npd Vault after policy attachment
+        vault_token = sign_vault_iam_request(npd_vault_url, npd_vault_aws_auth_role)
+        print(f"Updated Vault Client Token is successfully generated for npd")
+
+        for mount_path in aws_mount_paths:
+            # Generate AWS credentials from the non-production (npd) AWS secret engine
+            access_key, secret_key = generate_aws_credentials(npd_vault_url, vault_token, mount_path, aws_secret_engine_role)
+
+            if access_key and secret_key:
+                print(f"Access Key and Secret key successfully generated for npd")
+                LOGGER.debug(f"Validation successful for mount path: {mount_path} in npd")
+                validated_npd = True  # Mark npd as validated
+            else:
+                # If the mount path is not found in npd, try production (prd)
+                LOGGER.info(f"Mount path not found in npd: {mount_path}")
+                # Authenticate to production (prd) Vault
+                vault_token = sign_vault_iam_request(prd_vault_url, prd_vault_aws_auth_role)
+                print(f"Vault Client Token is successfully generated for prd")
+
+                # Create the Vault policy dynamically based on the mount paths
+                create_vault_policy(prd_vault_url, vault_token, vault_dynamic_policy, aws_mount_paths)
+
+                # Attach the dynamic policy in addition to existing policies to the prd Vault role
+                attach_policy_to_role(prd_vault_url, vault_token, prd_vault_aws_auth_role, vault_dynamic_policy)
+
+                # Re-authenticate to prd Vault after policy attachment
+                vault_token = sign_vault_iam_request(prd_vault_url, prd_vault_aws_auth_role)
+                print(f"Updated Vault Client Token is successfully generated for prd")
+
+                # Generate AWS credentials from the production (prd) AWS secret engine
+                access_key, secret_key = generate_aws_credentials(prd_vault_url, vault_token, mount_path, aws_secret_engine_role)
+
+                if access_key and secret_key:
+                    print(f"Access Key and Secret key successfully generated for prd")
+                    LOGGER.debug(f"Validation successful for mount path: {mount_path} in prd")
+                    validated_prd = True  # Mark prd as validated
+                else:
+                    LOGGER.info(f"Mount path '{mount_path}' not available in both npd and prd Vault environments")
+
+        # After validation is complete, delete the dynamic policy
+        if validated_npd:
+            delete_vault_policy(npd_vault_url, vault_token, vault_dynamic_policy)
+        if validated_prd:
+            delete_vault_policy(prd_vault_url, vault_token, vault_dynamic_policy)
+
+    except Exception as e:
+        LOGGER.error(f"Error occurred: {str(e)}")
+        raise
+
+    return event['Input']
