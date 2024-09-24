@@ -1,0 +1,161 @@
+Here’s an updated **process flow template** that includes the **integration between ServiceNow and Jira**, where a Jira story is created automatically after ServiceNow ticket approval, and the ServiceNow ticket is auto-closed upon Jira story creation.
+
+---
+
+## **ServiceNow to Jira Support Request Process Flow Documentation**
+
+---
+
+### **1. Document Title**
+**Title**: ServiceNow to Jira Support Request Process Flow  
+**Date**: [Insert Date]  
+**Version**: 1.0  
+**Author**: [Your Name]  
+**Department**: [Your Department]
+
+---
+
+### **2. Purpose**
+This document describes the end-to-end process flow for handling a support request in **ServiceNow**, including the integration with **Jira**. It outlines the steps for creating, approving, and auto-closing a ServiceNow ticket, as well as automatically creating a Jira story after approval.
+
+---
+
+### **3. Scope**
+This process applies to basic IT support requests and service requests that require approval and integration with Jira for task management.
+
+---
+
+### **4. Definitions**
+- **ServiceNow**: A cloud-based platform for managing IT services and support requests.
+- **Jira**: A tool used for project management and issue tracking.
+- **Approval**: The process by which a designated approver reviews and approves a ServiceNow ticket.
+- **Ticket**: A record in ServiceNow documenting a support request or issue.
+- **Story**: A task or issue created in Jira based on an approved ServiceNow ticket.
+
+---
+
+### **5. Process Flow Overview**
+
+#### **5.1. Request Submission**
+- **Actor**: User
+- **Description**: Users submit a support request through the **ServiceNow Self-Service Portal** or via email.
+- **Inputs**: Request details (issue description, urgency, contact information)
+- **Outputs**: A new support request ticket created in ServiceNow
+- **Key Actions**:
+  1. User logs into the **ServiceNow portal** or sends an email to the IT help desk.
+  2. Fills out the required fields (e.g., issue type, description, urgency).
+  3. Clicks **Submit** to create the ticket.
+
+#### **5.2. Ticket Assignment**
+- **Actor**: Service Desk Team
+- **Description**: The ticket is automatically assigned to the appropriate team or individual based on predefined rules.
+- **Inputs**: New support request
+- **Outputs**: Assigned ticket
+- **Key Actions**:
+  1. The ticket is routed based on category, priority, and team availability.
+  2. Alternatively, a Service Desk agent manually assigns the ticket.
+
+#### **5.3. Ticket Approval Process**
+- **Actor**: Approver
+- **Description**: The assigned approver reviews and either approves or rejects the ServiceNow ticket.
+- **Inputs**: Submitted ticket
+- **Outputs**: Ticket approved or rejected
+- **Key Actions**:
+  1. The approver receives a notification to review the ticket.
+  2. If approved, the ticket moves to the **Jira Integration** phase.
+  3. If rejected, the ticket is sent back to the requestor for additional information or modification.
+
+#### **5.4. Jira Story Creation (Integration)**
+- **Actor**: System (Automated)
+- **Description**: Once the ServiceNow ticket is approved, a Jira story is created automatically.
+- **Inputs**: Approved ServiceNow ticket
+- **Outputs**: New Jira story created
+- **Key Actions**:
+  1. The system automatically creates a Jira story based on the details from the approved ServiceNow ticket.
+  2. The Jira story is assigned to the appropriate Jira board and team for task management.
+  3. ServiceNow ticket status is updated to **In Progress**.
+
+#### **5.5. Auto-Closure of ServiceNow Ticket**
+- **Actor**: System (Automated)
+- **Description**: After the Jira story is successfully created, the corresponding ServiceNow ticket is auto-closed.
+- **Inputs**: Jira story creation status
+- **Outputs**: Closed ServiceNow ticket
+- **Key Actions**:
+  1. System verifies successful Jira story creation.
+  2. ServiceNow ticket is automatically marked as **Closed**.
+  3. A notification is sent to the requestor confirming the closure of the ServiceNow ticket.
+
+---
+
+### **6. Roles and Responsibilities**
+
+| **Role**              | **Responsibilities**                                          |
+|-----------------------|---------------------------------------------------------------|
+| **User**              | Submit support requests via ServiceNow.                       |
+| **Service Desk Agent**| Initial ticket triage, assign tickets, provide Level 1 support.|
+| **Approver**          | Review and approve or reject ServiceNow requests.             |
+| **System (ServiceNow)**| Automatically integrate with Jira and close tickets.         |
+| **Jira Task Owner**   | Manage Jira stories created from ServiceNow tickets.          |
+
+---
+
+### **7. Service Level Agreements (SLAs)**
+
+| **Priority**   | **Description**                              | **Response Time** | **Resolution Time** |
+|----------------|----------------------------------------------|-------------------|---------------------|
+| **Critical**   | Service down or severely impacted            | 15 minutes        | 2 hours              |
+| **High**       | Major issue affecting a large group          | 30 minutes        | 4 hours              |
+| **Medium**     | Moderate issue affecting individual user(s)  | 1 hour            | 8 hours              |
+| **Low**        | Minor issue, non-urgent                      | 4 hours           | 24 hours             |
+
+---
+
+### **8. Process Flow Diagram**
+Include a diagram to represent the steps visually.
+
+```plaintext
++------------------+      +------------------+      +------------------+
+| User Submits     | ---> | Ticket Assigned   | ---> | Ticket Approved   |
+| Request          |      |                  |      | (or Rejected)     |
++------------------+      +------------------+      +------------------+
+                                                   |
+                                                   v
+                                             +-----------------+
+                                             | Jira Story      |
+                                             | Auto-Created    |
+                                             +-----------------+
+                                                   |
+                                                   v
+                                             +-----------------+
+                                             | ServiceNow      |
+                                             | Ticket Auto-    |
+                                             | Closed          |
+                                             +-----------------+
+```
+
+---
+
+### **9. Key Metrics and KPIs**
+
+To measure the effectiveness of the process, monitor the following metrics:
+- **Approval Time**: Time taken for approvers to approve or reject tickets.
+- **Ticket-to-Story Conversion Time**: Time taken for the Jira story to be created after ServiceNow ticket approval.
+- **Auto-Closure Success Rate**: Percentage of ServiceNow tickets successfully closed after Jira story creation.
+- **SLA Compliance**: Percentage of tickets closed within the defined SLA.
+
+---
+
+### **10. Conclusion**
+
+This document outlines the process for handling basic ServiceNow support requests with integration to Jira. Following these steps ensures seamless collaboration between support teams and project management tools, maintaining high levels of efficiency and meeting SLAs.
+
+---
+
+### **11. Revision History**
+| **Version** | **Date**       | **Author**   | **Changes**           |
+|-------------|----------------|--------------|-----------------------|
+| 1.0         | [Insert Date]  | [Your Name]  | Initial documentation |
+
+---
+
+This template can be adjusted to reflect specific workflow and integration requirements.
