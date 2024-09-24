@@ -1,0 +1,59 @@
+import boto3
+from datetime import datetime, timedelta
+
+# Step 1: Hardcoded Load Balancer Name
+LOAD_BALANCER_NAME = 'my-load-balancer'  # Change to your actual load balancer name
+
+# Initialize CloudWatch client
+cloudwatch = boto3.client('cloudwatch')
+
+# Helper function to get metric statistics from CloudWatch
+def get_metric_sum(metric_name, load_balancer_name):
+    response = cloudwatch.get_metric_statistics(
+        Namespace='AWS/ApplicationELB',
+        MetricName=metric_name,
+        Dimensions=[
+            {
+                'Name': 'LoadBalancer',
+                'Value': load_balancer_name
+            }
+        ],
+        StartTime=datetime.utcnow() - timedelta(days=1),  # Last 24 hours
+        EndTime=datetime.utcnow(),
+        Period=3600,  # Aggregate data by hour
+        Statistics=['Sum'],
+    )
+    total_sum = sum([datapoint['Sum'] for datapoint in response['Datapoints']])
+    return total_sum
+
+# Lambda function handler
+def lambda_handler(event, context):
+    # Step 2: Get the counts for 2xx, 3xx, 4xx, and 5xx
+    count_2xx = get_metric_sum('HTTPCode_Target_2XX_Count', LOAD_BALANCER_NAME)
+    count_3xx = get_metric_sum('HTTPCode_Target_3XX_Count', LOAD_BALANCER_NAME)
+    count_4xx = get_metric_sum('HTTPCode_Target_4XX_Count', LOAD_BALANCER_NAME)
+    count_5xx = get_metric_sum('HTTPCode_Target_5XX_Count', LOAD_BALANCER_NAME)
+
+    # Step 3: Calculate the percentage of 5xx compared to 2xx
+    if count_2xx > 0:
+        percentage_5xx_vs_2xx = (count_5xx / count_2xx) * 100
+    else:
+        percentage_5xx_vs_2xx = 0
+
+    # Step 4: Calculate total availability percentage
+    availability_percentage = 100 - percentage_5xx_vs_2xx
+
+    # Step 5: Return the result as a response (or log it for debugging)
+    result = {
+        "2xx_count": count_2xx,
+        "3xx_count": count_3xx,
+        "4xx_count": count_4xx,
+        "5xx_count": count_5xx,
+        "availability_percentage": availability_percentage
+    }
+
+    return {
+        'statusCode': 200,
+        'body': result
+    }
+
