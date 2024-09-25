@@ -1,11 +1,12 @@
 {
-  "errorMessage": "An error occurred (AccessDenied) when calling the GetMetricStatistics operation: User: arn:aws:sts::520849555508:assumed-role/vault-npd-role20210924142732320000000001/Load-balancer-availability-testing is not authorized to perform: cloudwatch:GetMetricStatistics because no identity-based policy allows the cloudwatch:GetMetricStatistics action",
-  "errorType": "ClientError",
-  "requestId": "cd62eb5f-b592-441c-8e23-4e680a09cf94",
-  "stackTrace": [
-    "  File \"/var/task/lambda_function.py\", line 32, in lambda_handler\n    count_2xx = get_metric_sum('HTTPCode_Target_2XX_Count', LOAD_BALANCER_NAME)\n",
-    "  File \"/var/task/lambda_function.py\", line 12, in get_metric_sum\n    response = cloudwatch.get_metric_statistics(\n",
-    "  File \"/var/lang/lib/python3.11/site-packages/botocore/client.py\", line 565, in _api_call\n    return self._make_api_call(operation_name, kwargs)\n",
-    "  File \"/var/lang/lib/python3.11/site-packages/botocore/client.py\", line 1021, in _make_api_call\n    raise error_class(parsed_response, operation_name)\n"
-  ]
+  "statusCode": 200,
+  "body": {
+    "2xx_count": 0,
+    "3xx_count": 0,
+    "4xx_count": 0,
+    "5xx_count": 0,
+    "total_requests": 0,
+    "total_errors": 0,
+    "availability_percentage": 0
+  }
 }
