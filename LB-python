@@ -1,67 +1,74 @@
 import boto3
 from datetime import datetime, timedelta
 
-# Step 1: Hardcoded Load Balancer and Target Group Names
-LOAD_BALANCER_NAME = 'my-load-balancer'  # Change to your actual load balancer name
-TARGET_GROUP_NAME = 'my-target-group'    # Change to your actual target group name
-
-# Initialize CloudWatch client
 cloudwatch = boto3.client('cloudwatch')
 
-# Helper function to get metric statistics from CloudWatch
-def get_metric_sum(metric_name, load_balancer_name, target_group_name):
-    response = cloudwatch.get_metric_statistics(
-        Namespace='AWS/ApplicationELB',  # Adjust this if you are using Classic Load Balancer
-        MetricName=metric_name,
-        Dimensions=[
+def get_http_metrics(start_time, end_time, load_balancer_name):
+    response = cloudwatch.get_metric_data(
+        MetricDataQueries=[
             {
-                'Name': 'LoadBalancer',
-                'Value': load_balancer_name
+                'Id': 'HTTPCode_Backend_2XX',
+                'MetricStat': {
+                    'Metric': {
+                        'Namespace': 'AWS/ApplicationELB',
+                        'MetricName': 'HTTPCode_Backend_2XX',
+                        'Dimensions': [{'Name': 'LoadBalancer', 'Value': load_balancer_name}]
+                    },
+                    'Period': 3600,
+                    'Stat': 'Sum'
+                },
+                'ReturnData': True
             },
             {
-                'Name': 'TargetGroup',
-                'Value': target_group_name  # Add this if you're targeting a specific target group
+                'Id': 'HTTPCode_Backend_3XX',
+                'MetricStat': {
+                    'Metric': {
+                        'Namespace': 'AWS/ApplicationELB',
+                        'MetricName': 'HTTPCode_Backend_3XX',
+                        'Dimensions': [{'Name': 'LoadBalancer', 'Value': load_balancer_name}]
+                    },
+                    'Period': 3600,
+                    'Stat': 'Sum'
+                },
+                'ReturnData': True
+            },
+            {
+                'Id': 'HTTPCode_Backend_4XX',
+                'MetricStat': {
+                    'Metric': {
+                        'Namespace': 'AWS/ApplicationELB',
+                        'MetricName': 'HTTPCode_Backend_4XX',
+                        'Dimensions': [{'Name': 'LoadBalancer', 'Value': load_balancer_name}]
+                    },
+                    'Period': 3600,
+                    'Stat': 'Sum'
+                },
+                'ReturnData': True
+            },
+            {
+                'Id': 'HTTPCode_Backend_5XX',
+                'MetricStat': {
+                    'Metric': {
+                        'Namespace': 'AWS/ApplicationELB',
+                        'MetricName': 'HTTPCode_Backend_5XX',
+                        'Dimensions': [{'Name': 'LoadBalancer', 'Value': load_balancer_name}]
+                    },
+                    'Period': 3600,
+                    'Stat': 'Sum'
+                },
+                'ReturnData': True
             }
         ],
-        StartTime=datetime.utcnow() - timedelta(days=14),  # Last 14 days
-        EndTime=datetime.utcnow(),
-        Period=3600,  # Aggregate data by hour
-        Statistics=['Sum'],
+        StartTime=start_time,
+        EndTime=end_time,
+        ScanBy='TimestampDescending'
     )
-    # Filter and sum only the valid numerical 'Sum' values
-    total_sum = sum([datapoint['Sum'] for datapoint in response['Datapoints'] if 'Sum' in datapoint and datapoint['Sum'] is not None])
-    return total_sum
+    return response
 
-# Lambda function handler
-def lambda_handler(event, context):
-    # Step 2: Get the counts for backend 2xx, 3xx, 4xx, and 5xx
-    count_2xx = get_metric_sum('HTTPCode_Backend_2XX_Count', LOAD_BALANCER_NAME, TARGET_GROUP_NAME)
-    count_3xx = get_metric_sum('HTTPCode_Backend_3XX_Count', LOAD_BALANCER_NAME, TARGET_GROUP_NAME)
-    count_4xx = get_metric_sum('HTTPCode_Backend_4XX_Count', LOAD_BALANCER_NAME, TARGET_GROUP_NAME)
-    count_5xx = get_metric_sum('HTTPCode_Backend_5XX_Count', LOAD_BALANCER_NAME, TARGET_GROUP_NAME)
+# Example usage
+start_time = datetime.utcnow() - timedelta(days=14)
+end_time = datetime.utcnow()
+load_balancer_name = 'npd-alb'
 
-    # Calculate total requests and total errors
-    total_requests = count_2xx + count_3xx + count_4xx + count_5xx
-    total_errors = count_4xx + count_5xx
-
-    # Calculate availability based on total requests
-    if total_requests > 0:
-        availability_percentage = (1 - (total_errors / total_requests)) * 100
-    else:
-        availability_percentage = 100  # If no requests, assume 100% availability
-
-    # Step 5: Return the result as a response
-    result = {
-        "2xx_count": count_2xx,
-        "3xx_count": count_3xx,
-        "4xx_count": count_4xx,
-        "5xx_count": count_5xx,
-        "total_requests": total_requests,
-        "total_errors": total_errors,
-        "availability_percentage": availability_percentage
-    }
-
-    return {
-        'statusCode': 200,
-        'body': result
-    }
+metrics_data = get_http_metrics(start_time, end_time, load_balancer_name)
+print(metrics_data)
