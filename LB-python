@@ -7,11 +7,11 @@ def get_http_metrics(start_time, end_time, load_balancer_name):
     response = cloudwatch.get_metric_data(
         MetricDataQueries=[
             {
-                'Id': 'http_2xx',  # User-defined ID for this metric query
+                'Id': 'http_2xx',
                 'MetricStat': {
                     'Metric': {
-                        'Namespace': 'AWS/ApplicationELB',  # Replace with your actual namespace if needed
-                        'MetricName': 'HTTPCode_Backend_2XX',  # Correct metric name
+                        'Namespace': 'AWS/ApplicationELB',
+                        'MetricName': 'HTTPCode_Backend_2XX',
                         'Dimensions': [{'Name': 'LoadBalancer', 'Value': load_balancer_name}]
                     },
                     'Period': 3600,
@@ -65,10 +65,14 @@ def get_http_metrics(start_time, end_time, load_balancer_name):
     )
     return response
 
-# Example usage
-start_time = datetime.utcnow() - timedelta(days=14)
-end_time = datetime.utcnow()
-load_balancer_name = 'my-load-balancer'
+def lambda_handler(event, context):
+    start_time = datetime.utcnow() - timedelta(days=14)
+    end_time = datetime.utcnow()
+    load_balancer_name = 'my-load-balancer'
 
-metrics_data = get_http_metrics(start_time, end_time, load_balancer_name)
-print(metrics_data)
+    metrics_data = get_http_metrics(start_time, end_time, load_balancer_name)
+
+    return {
+        'statusCode': 200,
+        'body': metrics_data
+    }
