@@ -1,6 +1,59 @@
+Test Event Name
+test-lb-metrics
+
+Response
 {
-  "errorMessage": "Handler 'lambda_handler' missing on module 'lambda_function'",
-  "errorType": "Runtime.HandlerNotFound",
-  "requestId": "",
-  "stackTrace": []
+  "statusCode": 200,
+  "body": {
+    "MetricDataResults": [
+      {
+        "Id": "http_2xx",
+        "Label": "HTTPCode_Backend_2XX",
+        "Timestamps": [],
+        "Values": [],
+        "StatusCode": "Complete"
+      },
+      {
+        "Id": "http_3xx",
+        "Label": "HTTPCode_Backend_3XX",
+        "Timestamps": [],
+        "Values": [],
+        "StatusCode": "Complete"
+      },
+      {
+        "Id": "http_4xx",
+        "Label": "HTTPCode_Backend_4XX",
+        "Timestamps": [],
+        "Values": [],
+        "StatusCode": "Complete"
+      },
+      {
+        "Id": "http_5xx",
+        "Label": "HTTPCode_Backend_5XX",
+        "Timestamps": [],
+        "Values": [],
+        "StatusCode": "Complete"
+      }
+    ],
+    "Messages": [],
+    "ResponseMetadata": {
+      "RequestId": "510aae5a-7cec-4b52-9960-299637657fb8",
+      "HTTPStatusCode": 200,
+      "HTTPHeaders": {
+        "x-amzn-requestid": "510aae5a-7cec-4b52-9960-299637657fb8",
+        "content-type": "text/xml",
+        "content-length": "1058",
+        "date": "Wed, 25 Sep 2024 06:35:16 GMT"
+      },
+      "RetryAttempts": 0
+    }
+  }
 }
+
+Function Logs
+START RequestId: f18a0d7f-4db4-4c70-bfbf-a438bb44c92c Version: $LATEST
+END RequestId: f18a0d7f-4db4-4c70-bfbf-a438bb44c92c
+REPORT RequestId: f18a0d7f-4db4-4c70-bfbf-a438bb44c92c	Duration: 474.10 ms	Billed Duration: 475 ms	Memory Size: 128 MB	Max Memory Used: 77 MB	Init Duration: 338.73 ms
+
+Request ID
+f18a0d7f-4db4-4c70-bfbf-a438bb44c92c
