@@ -7,11 +7,11 @@ def get_http_metrics(start_time, end_time, load_balancer_name):
     response = cloudwatch.get_metric_data(
         MetricDataQueries=[
             {
-                'Id': 'HTTPCode_Backend_2XX',
+                'Id': 'http_2xx',  # User-defined ID for this metric query
                 'MetricStat': {
                     'Metric': {
-                        'Namespace': 'AWS/ApplicationELB',
-                        'MetricName': 'HTTPCode_Backend_2XX',
+                        'Namespace': 'AWS/ApplicationELB',  # Replace with your actual namespace if needed
+                        'MetricName': 'HTTPCode_Backend_2XX',  # Correct metric name
                         'Dimensions': [{'Name': 'LoadBalancer', 'Value': load_balancer_name}]
                     },
                     'Period': 3600,
@@ -20,7 +20,7 @@ def get_http_metrics(start_time, end_time, load_balancer_name):
                 'ReturnData': True
             },
             {
-                'Id': 'HTTPCode_Backend_3XX',
+                'Id': 'http_3xx',
                 'MetricStat': {
                     'Metric': {
                         'Namespace': 'AWS/ApplicationELB',
@@ -33,7 +33,7 @@ def get_http_metrics(start_time, end_time, load_balancer_name):
                 'ReturnData': True
             },
             {
-                'Id': 'HTTPCode_Backend_4XX',
+                'Id': 'http_4xx',
                 'MetricStat': {
                     'Metric': {
                         'Namespace': 'AWS/ApplicationELB',
@@ -46,7 +46,7 @@ def get_http_metrics(start_time, end_time, load_balancer_name):
                 'ReturnData': True
             },
             {
-                'Id': 'HTTPCode_Backend_5XX',
+                'Id': 'http_5xx',
                 'MetricStat': {
                     'Metric': {
                         'Namespace': 'AWS/ApplicationELB',
@@ -68,7 +68,7 @@ def get_http_metrics(start_time, end_time, load_balancer_name):
 # Example usage
 start_time = datetime.utcnow() - timedelta(days=14)
 end_time = datetime.utcnow()
-load_balancer_name = 'npd-alb'
+load_balancer_name = 'my-load-balancer'
 
 metrics_data = get_http_metrics(start_time, end_time, load_balancer_name)
 print(metrics_data)
