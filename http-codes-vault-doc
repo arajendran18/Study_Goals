@@ -1,0 +1,76 @@
+HTTP status codes are part of the response from a web server to a client’s request, indicating the status of the request. They are divided into five classes, where each class represents a different type of response. Let's focus on the 2XX, 3XX, 4XX, and 5XX status codes in detail:
+
+### 1. **2XX: Success**
+   - **Category**: The 2XX class indicates that the client's request was successfully received, understood, and accepted by the server.
+   - **Examples**:
+     - **200 OK**: The request has succeeded. This is the most common success status. It means the server has fulfilled the request.
+     - **201 Created**: The request has been fulfilled and resulted in the creation of a new resource, such as when a new user is created in a database.
+     - **202 Accepted**: The request has been accepted for processing, but the processing has not been completed yet.
+     - **204 No Content**: The server successfully processed the request, but there's no content to return (e.g., for a DELETE request).
+
+   **Use Cases**:
+   - **2XX** codes typically occur when everything is working as expected.
+   - They confirm that the request, such as fetching a webpage, submitting a form, or completing an API call, was processed without any issues.
+
+---
+
+### 2. **3XX: Redirection**
+   - **Category**: The 3XX class indicates that further action must be taken by the client to complete the request. This usually involves redirecting the client to a different resource.
+   - **Examples**:
+     - **301 Moved Permanently**: The requested resource has been permanently moved to a new URI. Search engines and clients should update the resource's URL to the new location.
+     - **302 Found (Temporary Redirect)**: The requested resource is temporarily available at a different URI. Clients should continue to use the original URI for future requests.
+     - **304 Not Modified**: This is used for caching purposes. It means the requested resource has not been modified since the last request, so the client can use its cached version.
+     - **307 Temporary Redirect**: Similar to 302, but it specifies that the client should make future requests to the same URI.
+
+   **Use Cases**:
+   - **3XX** codes are used to manage traffic, redirect users, and optimize web server resources.
+   - They are commonly seen when a website undergoes structural changes or when content is relocated to a new domain.
+
+---
+
+### 3. **4XX: Client Error**
+   - **Category**: The 4XX class indicates that the client made a request that the server could not process due to an issue on the client’s side, such as malformed syntax or invalid request parameters.
+   - **Examples**:
+     - **400 Bad Request**: The server cannot process the request due to a client error, such as invalid syntax, malformed request body, or incorrect parameters.
+     - **401 Unauthorized**: The client must authenticate itself to get the requested response. It indicates that valid authentication credentials are needed to access the resource.
+     - **403 Forbidden**: The client is authenticated but does not have permission to access the resource.
+     - **404 Not Found**: The server cannot find the requested resource. This is a common error when a user enters an incorrect URL.
+     - **429 Too Many Requests**: The client has sent too many requests in a given period and is being rate-limited.
+
+   **Use Cases**:
+   - **4XX** codes are common when users request non-existent resources, provide incorrect input, or fail authentication.
+   - It is often used to notify the client about the problem, allowing them to fix it and try again.
+
+---
+
+### 4. **5XX: Server Error**
+   - **Category**: The 5XX class indicates that the server encountered an error and was unable to process the request due to an issue on the server side.
+   - **Examples**:
+     - **500 Internal Server Error**: A generic error message indicating that the server encountered an unexpected condition preventing it from fulfilling the request.
+     - **502 Bad Gateway**: The server, while acting as a gateway or proxy, received an invalid response from an upstream server.
+     - **503 Service Unavailable**: The server is currently unable to handle the request due to temporary overloading or maintenance.
+     - **504 Gateway Timeout**: The server, while acting as a gateway or proxy, did not receive a timely response from the upstream server.
+     - **507 Insufficient Storage**: The server cannot store the representation needed to complete the request.
+
+   **Use Cases**:
+   - **5XX** errors typically occur due to server misconfigurations, heavy traffic, or maintenance. They signal that the problem is on the server’s side, and the client can retry later.
+   - Developers and sysadmins use these error codes to troubleshoot server issues.
+
+---
+
+### Summary of Status Codes:
+
+| **Class**  | **Code Range** | **Description**                           | **Examples**               |
+|------------|----------------|-------------------------------------------|----------------------------|
+| **2XX**    | 200–299        | Success, request was successful           | 200 OK, 201 Created         |
+| **3XX**    | 300–399        | Redirection, further action required      | 301 Moved Permanently, 302 Found |
+| **4XX**    | 400–499        | Client errors, problem on the client's side | 400 Bad Request, 404 Not Found, 403 Forbidden |
+| **5XX**    | 500–599        | Server errors, problem on the server’s side | 500 Internal Server Error, 503 Service Unavailable |
+
+### Real-World Scenarios:
+- **2XX**: When a user successfully logs in, fetches a webpage, or completes a purchase on an e-commerce site.
+- **3XX**: When a user visits an old domain, and the server redirects them to a new domain or webpage.
+- **4XX**: When a user types a wrong URL or accesses a restricted page without proper authentication.
+- **5XX**: When a server is overloaded or misconfigured, causing it to crash or fail to handle requests properly.
+
+Each class of HTTP status codes provides meaningful insight into what’s happening between the client and server, helping developers diagnose and fix issues efficiently.
