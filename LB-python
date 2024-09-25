@@ -1,10 +1,10 @@
 import boto3
 from datetime import datetime, timedelta
 
-# Initialize CloudWatch client
 cloudwatch = boto3.client('cloudwatch')
 
-def get_http_metrics(start_time, end_time, load_balancer_name):
+# Fetching both 2XX and 5XX metrics in 5-minute intervals
+def get_metrics(start_time, end_time, load_balancer_name):
     response = cloudwatch.get_metric_data(
         MetricDataQueries=[
             {
@@ -15,33 +15,7 @@ def get_http_metrics(start_time, end_time, load_balancer_name):
                         'MetricName': 'HTTPCode_ELB_2XX_Count',
                         'Dimensions': [{'Name': 'LoadBalancer', 'Value': load_balancer_name}]
                     },
-                    'Period': 3600,
-                    'Stat': 'Sum'
-                },
-                'ReturnData': True
-            },
-            {
-                'Id': 'http3xx',
-                'MetricStat': {
-                    'Metric': {
-                        'Namespace': 'AWS/ApplicationELB',
-                        'MetricName': 'HTTPCode_ELB_3XX_Count',
-                        'Dimensions': [{'Name': 'LoadBalancer', 'Value': load_balancer_name}]
-                    },
-                    'Period': 3600,
-                    'Stat': 'Sum'
-                },
-                'ReturnData': True
-            },
-            {
-                'Id': 'http4xx',
-                'MetricStat': {
-                    'Metric': {
-                        'Namespace': 'AWS/ApplicationELB',
-                        'MetricName': 'HTTPCode_ELB_4XX_Count',
-                        'Dimensions': [{'Name': 'LoadBalancer', 'Value': load_balancer_name}]
-                    },
-                    'Period': 3600,
+                    'Period': 300,  # 5-minute granularity
                     'Stat': 'Sum'
                 },
                 'ReturnData': True
@@ -54,7 +28,7 @@ def get_http_metrics(start_time, end_time, load_balancer_name):
                         'MetricName': 'HTTPCode_ELB_5XX_Count',
                         'Dimensions': [{'Name': 'LoadBalancer', 'Value': load_balancer_name}]
                     },
-                    'Period': 3600,
+                    'Period': 300,  # 5-minute granularity
                     'Stat': 'Sum'
                 },
                 'ReturnData': True
@@ -66,45 +40,62 @@ def get_http_metrics(start_time, end_time, load_balancer_name):
     )
     return response
 
+# Calculate total uptime and downtime from 2XX and 5XX responses
+def calculate_uptime_downtime(metrics_data):
+    # Extract 2XX and 5XX data points
+    http2xx_data = next(item for item in metrics_data['MetricDataResults'] if item['Id'] == 'http2xx')
+    http5xx_data = next(item for item in metrics_data['MetricDataResults'] if item['Id'] == 'http5xx')
+
+    total_uptime_intervals = 0
+    total_downtime_intervals = 0
+    
+    # Iterate over the data points
+    for i in range(len(http2xx_data['Timestamps'])):
+        # Get the 2XX and 5XX values for the same timestamp
+        http2xx_value = http2xx_data['Values'][i] if i < len(http2xx_data['Values']) else 0
+        http5xx_value = http5xx_data['Values'][i] if i < len(http5xx_data['Values']) else 0
+        
+        # Uptime: 2XX > 0 and 5XX == 0
+        if http2xx_value > 0 and http5xx_value == 0:
+            total_uptime_intervals += 1
+        # Downtime: 5XX > 0
+        elif http5xx_value > 0:
+            total_downtime_intervals += 1
+
+    # Calculate total uptime and downtime in minutes
+    total_uptime_minutes = total_uptime_intervals * 5  # Each interval is 5 minutes
+    total_downtime_minutes = total_downtime_intervals * 5
+
+    return total_uptime_minutes, total_downtime_minutes
+
+# Lambda handler
 def lambda_handler(event, context):
-    # Set the time range for the last 30 days
-    start_time = datetime.utcnow() - timedelta(days=30)
+    start_time = datetime.utcnow() - timedelta(days=30)  # Past 30 days
     end_time = datetime.utcnow()
+    load_balancer_name = event['load_balancer_name']  # Pass load balancer name via event
 
-    # Ensure to set the correct load balancer name
-    load_balancer_name = 'app/my-load-balancer/12345abcdef'  # Change this to your actual Load Balancer ID
+    # Fetch metrics
+    metrics_data = get_metrics(start_time, end_time, load_balancer_name)
 
-    # Get the HTTP metrics
-    metrics_data = get_http_metrics(start_time, end_time, load_balancer_name)
-
-    # Extract the values
-    http_2xx_count = sum(metrics_data['MetricDataResults'][0]['Values'])
-    http_3xx_count = sum(metrics_data['MetricDataResults'][1]['Values'])
-    http_4xx_count = sum(metrics_data['MetricDataResults'][2]['Values'])
-    http_5xx_count = sum(metrics_data['MetricDataResults'][3]['Values'])
-
-    # Calculate total requests and errors
-    total_requests = http_2xx_count + http_3xx_count + http_4xx_count + http_5xx_count
-    total_errors = http_4xx_count + http_5xx_count
-
-    # Calculate availability percentage
-    if total_requests > 0:
-        availability_percentage = (1 - (total_errors / total_requests)) * 100
-    else:
-        availability_percentage = 0
-
-    # Construct the response
-    result = {
-        "2xx_count": http_2xx_count,
-        "3xx_count": http_3xx_count,
-        "4xx_count": http_4xx_count,
-        "5xx_count": http_5xx_count,
-        "total_requests": total_requests,
-        "total_errors": total_errors,
-        "availability_percentage": availability_percentage
-    }
+    # Calculate uptime and downtime
+    total_uptime, total_downtime = calculate_uptime_downtime(metrics_data)
 
     return {
-        'statusCode': 200,
-        'body': result
+        "statusCode": 200,
+        "body": {
+            "total_uptime_minutes": total_uptime,
+            "total_downtime_minutes": total_downtime
+        }
     }
+
+# Test outside Lambda
+if __name__ == "__main__":
+    start_time = datetime.utcnow() - timedelta(days=30)
+    end_time = datetime.utcnow()
+    load_balancer_name = 'app/my-load-balancer/12345abcdef'
+
+    metrics_data = get_metrics(start_time, end_time, load_balancer_name)
+    total_uptime, total_downtime = calculate_uptime_downtime(metrics_data)
+
+    print(f"Total Uptime: {total_uptime} minutes")
+    print(f"Total Downtime: {total_downtime} minutes")
