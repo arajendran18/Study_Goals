@@ -1,0 +1,46 @@
+import boto3
+from datetime import datetime, timedelta
+
+cloudwatch = boto3.client('cloudwatch')
+
+def get_5xx_metrics(start_time, end_time, load_balancer_name):
+    response = cloudwatch.get_metric_data(
+        MetricDataQueries=[
+            {
+                'Id': 'http5xx',
+                'MetricStat': {
+                    'Metric': {
+                        'Namespace': 'AWS/ApplicationELB',
+                        'MetricName': 'HTTPCode_ELB_5XX_Count',
+                        'Dimensions': [{'Name': 'LoadBalancer', 'Value': load_balancer_name}]
+                    },
+                    'Period': 3600,  # Data aggregated by hour
+                    'Stat': 'Sum'
+                },
+                'ReturnData': True
+            }
+        ],
+        StartTime=start_time,
+        EndTime=end_time,
+        ScanBy='TimestampDescending'
+    )
+    
+    # Filter and sum only the valid numerical 'Sum' values
+    total_5xx = sum([datapoint['Sum'] for datapoint in response['MetricDataResults'] if datapoint['Id'] == 'http5xx' and 'Sum' in datapoint])
+    
+    return total_5xx
+
+def lambda_handler(event, context):
+    start_time = datetime.utcnow() - timedelta(days=30)  # Adjusted time range to 30 days
+    end_time = datetime.utcnow()
+    load_balancer_name = 'app/my-load-balancer/12345abcdef'  # Ensure the correct load balancer name
+
+    # Get 5XX metrics
+    five_hundred_errors = get_5xx_metrics(start_time, end_time, load_balancer_name)
+
+    return {
+        "statusCode": 200,
+        "body": {
+            "5xx_count": five_hundred_errors
+        }
+    }
