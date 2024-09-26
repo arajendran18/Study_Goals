@@ -1,0 +1,33 @@
+{
+    "statusCode": 200,
+    "body": {
+        "us-east-1": [
+            {
+                "LoadBalancerName": "my-classic-elb-1",
+                "HTTPCode_Backend_5XX_Count": 20,
+                "HTTPCode_Backend_2XX_Count": 980,
+                "Availability_Percentage": "97.9591836739%",
+                "Message": "The availability percentage based on user's request is 97.9591836739%",
+                "Summary": "5XX Count: 20, 2XX Count: 980, Availability: 97.9591836739%"
+            },
+            {
+                "LoadBalancerName": "my-classic-elb-2",
+                "HTTPCode_Backend_5XX_Count": 5,
+                "HTTPCode_Backend_2XX_Count": 995,
+                "Availability_Percentage": "99.5037311594%",
+                "Message": "The availability percentage based on user's request is 99.5037311594%",
+                "Summary": "5XX Count: 5, 2XX Count: 995, Availability: 99.5037311594%"
+            }
+        ],
+        "us-west-2": [
+            {
+                "LoadBalancerName": "my-classic-elb-3",
+                "HTTPCode_Backend_5XX_Count": 15,
+                "HTTPCode_Backend_2XX_Count": 985,
+                "Availability_Percentage": "98.4635178272%",
+                "Message": "The availability percentage based on user's request is 98.4635178272%",
+                "Summary": "5XX Count: 15, 2XX Count: 985, Availability: 98.4635178272%"
+            }
+        ]
+    }
+}
