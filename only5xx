@@ -3,25 +3,23 @@ from datetime import datetime, timedelta
 
 cloudwatch = boto3.client('cloudwatch')
 
-def get_5xx_metrics(start_time, end_time, load_balancer_name):
-    # Add debugging to check load balancer name and time range
-    print(f"Querying 5XX errors for load balancer: {load_balancer_name}")
+def get_metric_data(start_time, end_time, load_balancer_name, metric_name):
+    print(f"Querying {metric_name} for load balancer: {load_balancer_name}")
     print(f"Start Time: {start_time}, End Time: {end_time}")
     
-    # Get metrics from CloudWatch
     response = cloudwatch.get_metric_data(
         MetricDataQueries=[
             {
-                'Id': 'http5xx',
+                'Id': 'metric_query',
                 'MetricStat': {
                     'Metric': {
                         'Namespace': 'AWS/ELB',
-                        'MetricName': 'HTTPCode_Backend_5XX',
+                        'MetricName': metric_name,
                         'Dimensions': [
                             {'Name': 'LoadBalancerName', 'Value': load_balancer_name}
                         ]
                     },
-                    'Period': 3600,  # Data aggregated by hour
+                    'Period': 300,  # Aggregated over 5 minutes
                     'Stat': 'Sum'
                 },
                 'ReturnData': True
@@ -32,33 +30,32 @@ def get_5xx_metrics(start_time, end_time, load_balancer_name):
         ScanBy='TimestampDescending'
     )
     
-    # Print out the raw response for debugging purposes
-    print(f"CloudWatch Response: {response}")
+    print(f"CloudWatch Response: {response}")  # Debugging the entire response
     
-    # Sum the 'Values' from the metric results
-    total_5xx = 0
+    total_value = 0
     for result in response['MetricDataResults']:
-        if result['Id'] == 'http5xx' and 'Values' in result:
-            total_5xx += sum(result['Values'])  # Sum all the values in 'Values'
+        if result['Id'] == 'metric_query' and 'Values' in result:
+            total_value += sum(result['Values'])
     
-    print(f"Total 5XX Errors: {total_5xx}")
-    return total_5xx
+    print(f"Total {metric_name} Count: {total_value}")
+    return total_value
 
 def lambda_handler(event, context):
-    # Set the time range for the last 7 days (to test shorter period)
-    start_time = datetime.utcnow() - timedelta(days=7)
+    # Shortened time range for testing (1 hour)
+    start_time = datetime.utcnow() - timedelta(hours=1)
     end_time = datetime.utcnow()
 
-    # Specify your load balancer name (ensure this is the correct format for ELB)
-    load_balancer_name = 'my-classic-elb'  # Replace with actual Classic ELB name
+    # Ensure this is your actual Classic ELB name
+    load_balancer_name = 'my-classic-elb'  # Adjust as needed
 
-    # Get the 5XX metrics from CloudWatch
-    five_hundred_errors = get_5xx_metrics(start_time, end_time, load_balancer_name)
+    # Try 'RequestCount' temporarily to verify data retrieval
+    metric_name = 'RequestCount'  # Swap back to 'HTTPCode_Backend_5XX' after testing
 
-    # Return the response
+    metric_count = get_metric_data(start_time, end_time, load_balancer_name, metric_name)
+
     return {
         "statusCode": 200,
         "body": {
-            "5xx_count": five_hundred_errors
+            f"{metric_name}_count": metric_count
         }
     }
