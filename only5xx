@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 cloudwatch = boto3.client('cloudwatch')
 
 def get_5xx_metrics(start_time, end_time, load_balancer_name):
+    # Get metrics from CloudWatch
     response = cloudwatch.get_metric_data(
         MetricDataQueries=[
             {
@@ -12,7 +13,9 @@ def get_5xx_metrics(start_time, end_time, load_balancer_name):
                     'Metric': {
                         'Namespace': 'AWS/ApplicationELB',
                         'MetricName': 'HTTPCode_ELB_5XX_Count',
-                        'Dimensions': [{'Name': 'LoadBalancer', 'Value': load_balancer_name}]
+                        'Dimensions': [
+                            {'Name': 'LoadBalancer', 'Value': load_balancer_name}
+                        ]
                     },
                     'Period': 3600,  # Data aggregated by hour
                     'Stat': 'Sum'
@@ -25,19 +28,26 @@ def get_5xx_metrics(start_time, end_time, load_balancer_name):
         ScanBy='TimestampDescending'
     )
     
-    # Filter and sum only the valid numerical 'Sum' values
-    total_5xx = sum([datapoint['Sum'] for datapoint in response['MetricDataResults'] if datapoint['Id'] == 'http5xx' and 'Sum' in datapoint])
+    # Sum the 'Values' from the metric results (not 'Sum')
+    total_5xx = 0
+    for result in response['MetricDataResults']:
+        if result['Id'] == 'http5xx' and 'Values' in result:
+            total_5xx += sum(result['Values'])  # Sum all the values in 'Values'
     
     return total_5xx
 
 def lambda_handler(event, context):
-    start_time = datetime.utcnow() - timedelta(days=30)  # Adjusted time range to 30 days
+    # Set the time range for the last 30 days
+    start_time = datetime.utcnow() - timedelta(days=30)
     end_time = datetime.utcnow()
-    load_balancer_name = 'app/my-load-balancer/12345abcdef'  # Ensure the correct load balancer name
 
-    # Get 5XX metrics
+    # Specify your load balancer name (ensure this is the correct format for ELB)
+    load_balancer_name = 'app/my-load-balancer/12345abcdef'  
+
+    # Get the 5XX metrics from CloudWatch
     five_hundred_errors = get_5xx_metrics(start_time, end_time, load_balancer_name)
 
+    # Return the response
     return {
         "statusCode": 200,
         "body": {
