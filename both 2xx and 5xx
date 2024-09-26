@@ -1,0 +1,56 @@
+import boto3
+from datetime import datetime, timedelta
+
+cloudwatch = boto3.client('cloudwatch')
+
+def get_http_code_count(start_time, end_time, load_balancer_name, metric_name):
+    response = cloudwatch.get_metric_data(
+        MetricDataQueries=[
+            {
+                'Id': 'http_code_query',
+                'MetricStat': {
+                    'Metric': {
+                        'Namespace': 'AWS/ELB',
+                        'MetricName': metric_name,
+                        'Dimensions': [
+                            {'Name': 'LoadBalancerName', 'Value': load_balancer_name}
+                        ]
+                    },
+                    'Period': 300,  # 5-minute interval
+                    'Stat': 'Sum'
+                },
+                'ReturnData': True
+            }
+        ],
+        StartTime=start_time,
+        EndTime=end_time,
+        ScanBy='TimestampDescending'
+    )
+    
+    # Sum up the values for all the time periods
+    total_count = 0
+    for result in response['MetricDataResults']:
+        if result['Id'] == 'http_code_query' and 'Values' in result:
+            total_count += sum(result['Values'])
+
+    return total_count
+
+def lambda_handler(event, context):
+    # Query over a 30-day time range
+    start_time = datetime.utcnow() - timedelta(days=30)
+    end_time = datetime.utcnow()
+
+    # Replace with the actual Classic Load Balancer name
+    load_balancer_name = 'npd-elb'  # Replace with your ELB name
+
+    # Get the total 5XX and 2XX counts
+    total_5xx_errors = get_http_code_count(start_time, end_time, load_balancer_name, 'HTTPCode_Backend_5XX')
+    total_2xx_responses = get_http_code_count(start_time, end_time, load_balancer_name, 'HTTPCode_Backend_2XX')
+
+    return {
+        "statusCode": 200,
+        "body": {
+            "HTTPCode_Backend_5XX_Count": total_5xx_errors,
+            "HTTPCode_Backend_2XX_Count": total_2xx_responses
+        }
+    }
