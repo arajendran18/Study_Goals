@@ -1,0 +1,76 @@
+import boto3
+from datetime import datetime, timedelta
+
+cloudwatch = boto3.client('cloudwatch')
+
+def get_http_code_count(start_time, end_time, load_balancer_name, metric_name):
+    response = cloudwatch.get_metric_data(
+        MetricDataQueries=[
+            {
+                'Id': 'http_code_query',
+                'MetricStat': {
+                    'Metric': {
+                        'Namespace': 'AWS/ApplicationELB',  # Use ApplicationELB namespace
+                        'MetricName': metric_name,
+                        'Dimensions': [
+                            {'Name': 'LoadBalancer', 'Value': load_balancer_name}
+                        ]
+                    },
+                    'Period': 300,  # 5-minute interval
+                    'Stat': 'Sum'
+                },
+                'ReturnData': True
+            }
+        ],
+        StartTime=start_time,
+        EndTime=end_time,
+        ScanBy='TimestampDescending'
+    )
+    
+    # Sum up the values for all the time periods
+    total_count = 0
+    for result in response['MetricDataResults']:
+        if result['Id'] == 'http_code_query' and 'Values' in result:
+            total_count += sum(result['Values'])
+
+    return total_count
+
+def calculate_availability(total_5xx_errors, total_2xx_responses):
+    # If there are no 2XX responses, availability is undefined, so return 0
+    if total_2xx_responses == 0:
+        return 0
+
+    # Calculate the percentage of 5XX to 2XX
+    percentage_5xx_of_2xx = (total_5xx_errors / total_2xx_responses) * 100
+    
+    # Subtract the 5XX percentage from 100 to get availability (with full precision)
+    availability_percentage = 100 - percentage_5xx_of_2xx
+    
+    return availability_percentage
+
+def lambda_handler(event, context):
+    # Query over a 30-day time range
+    start_time = datetime.utcnow() - timedelta(days=30)
+    end_time = datetime.utcnow()
+
+    # Replace with the actual Application Load Balancer name
+    load_balancer_name = 'my-application-elb'  # Replace with your ALB name
+
+    # Get the total 5XX and 2XX counts for ALB
+    total_5xx_errors = get_http_code_count(start_time, end_time, load_balancer_name, 'HTTPCode_Backend_5XX')
+    total_2xx_responses = get_http_code_count(start_time, end_time, load_balancer_name, 'HTTPCode_Backend_2XX')
+
+    # Calculate the availability percentage with full precision
+    availability_percentage = calculate_availability(total_5xx_errors, total_2xx_responses)
+
+    # Print the 5XX count, 2XX count, and availability percentage with more decimal precision
+    return {
+        "statusCode": 200,
+        "body": {
+            "HTTPCode_Backend_5XX_Count": total_5xx_errors,
+            "HTTPCode_Backend_2XX_Count": total_2xx_responses,
+            "Availability_Percentage": f"{availability_percentage:.10f}%",  # 10 decimal places for accuracy
+            "Message": f"The availability percentage based on user's request is {availability_percentage:.10f}%",
+            "Summary": f"5XX Count: {total_5xx_errors}, 2XX Count: {total_2xx_responses}, Availability: {availability_percentage:.10f}%"
+        }
+    }
