@@ -3,23 +3,20 @@ from datetime import datetime, timedelta
 
 cloudwatch = boto3.client('cloudwatch')
 
-def get_metric_data(start_time, end_time, load_balancer_name, metric_name):
-    print(f"Querying {metric_name} for load balancer: {load_balancer_name}")
-    print(f"Start Time: {start_time}, End Time: {end_time}")
-    
+def get_backend_5xx_count(start_time, end_time, load_balancer_name):
     response = cloudwatch.get_metric_data(
         MetricDataQueries=[
             {
-                'Id': 'metric_query',
+                'Id': 'backend5xx',
                 'MetricStat': {
                     'Metric': {
                         'Namespace': 'AWS/ELB',
-                        'MetricName': metric_name,
+                        'MetricName': 'HTTPCode_Backend_5XX',
                         'Dimensions': [
                             {'Name': 'LoadBalancerName', 'Value': load_balancer_name}
                         ]
                     },
-                    'Period': 300,  # Aggregated over 5 minutes
+                    'Period': 300,  # 5-minute interval
                     'Stat': 'Sum'
                 },
                 'ReturnData': True
@@ -30,32 +27,28 @@ def get_metric_data(start_time, end_time, load_balancer_name, metric_name):
         ScanBy='TimestampDescending'
     )
     
-    print(f"CloudWatch Response: {response}")  # Debugging the entire response
-    
-    total_value = 0
+    # Sum up the values for all the time periods
+    total_5xx = 0
     for result in response['MetricDataResults']:
-        if result['Id'] == 'metric_query' and 'Values' in result:
-            total_value += sum(result['Values'])
-    
-    print(f"Total {metric_name} Count: {total_value}")
-    return total_value
+        if result['Id'] == 'backend5xx' and 'Values' in result:
+            total_5xx += sum(result['Values'])
+
+    return total_5xx
 
 def lambda_handler(event, context):
-    # Shortened time range for testing (1 hour)
-    start_time = datetime.utcnow() - timedelta(hours=1)
+    # Query over a 30-day time range
+    start_time = datetime.utcnow() - timedelta(days=30)
     end_time = datetime.utcnow()
 
-    # Ensure this is your actual Classic ELB name
-    load_balancer_name = 'my-classic-elb'  # Adjust as needed
+    # Replace with the actual Classic Load Balancer name
+    load_balancer_name = 'my-classic-elb'  # Replace with your ELB name
 
-    # Try 'RequestCount' temporarily to verify data retrieval
-    metric_name = 'RequestCount'  # Swap back to 'HTTPCode_Backend_5XX' after testing
-
-    metric_count = get_metric_data(start_time, end_time, load_balancer_name, metric_name)
+    # Get the total 5XX count
+    total_5xx_errors = get_backend_5xx_count(start_time, end_time, load_balancer_name)
 
     return {
         "statusCode": 200,
         "body": {
-            f"{metric_name}_count": metric_count
+            "HTTPCode_Backend_5XX_Count": total_5xx_errors
         }
     }
