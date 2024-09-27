@@ -1,0 +1,7 @@
+{
+  "Effect": "Allow",
+  "Action": [
+    "elasticloadbalancing:DescribeLoadBalancers"
+  ],
+  "Resource": "*"
+}
