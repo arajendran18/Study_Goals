@@ -1,7 +1,10 @@
 {
-  "Effect": "Allow",
-  "Action": [
-    "elasticloadbalancing:DescribeLoadBalancers"
-  ],
-  "Resource": "*"
+  "errorMessage": "'State'",
+  "errorType": "KeyError",
+  "requestId": "50f6c33b-b3bc-4006-85d1-fd5e87dca865",
+  "stackTrace": [
+    "  File \"/var/task/lambda_function.py\", line 71, in lambda_handler\n    load_balancer_names = get_active_load_balancers(region)\n",
+    "  File \"/var/task/lambda_function.py\", line 9, in get_active_load_balancers\n    active_load_balancers = [\n",
+    "  File \"/var/task/lambda_function.py\", line 11, in <listcomp>\n    if lb['State'] == 'active'\n"
+  ]
 }
