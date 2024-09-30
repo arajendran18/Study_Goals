@@ -1,0 +1,2 @@
+ Application team reported that they airflow jobs are failing due to this error
+Exception: ERR_DBX_JR_APP_310003 : Error in Data Seed aggregate data basedon model_id execution -- ERR_JR_APP_30110: Error in initialization of ML MetaModel Data Access -- ERR_JR_APP_30101: Error while initializing DbTransactionManager -- ERR_JR_SNOWFLAKE_DB_50005Snowflake DbConnectionManager.__init__  failed  -- ('ERR_JR_SNOWFLAKE_DB_50006', 'Error while fetching snowflake vault password  -- ERR_JR_APP_30005 : Error in getting Vault Credentials')
