@@ -1,0 +1,47 @@
+To send **PagerDuty alerts** to **ServiceNow**, follow these simplified steps for integration. This ensures that incidents triggered in PagerDuty automatically create or update incidents in ServiceNow.
+
+### Steps to Integrate PagerDuty Alerts with ServiceNow:
+
+### 1. **Install PagerDuty ServiceNow Integration**
+   - **Go to ServiceNow Store** and search for the **PagerDuty Integration** app.
+   - Install the app on your ServiceNow instance. This app provides pre-built integration features to create incidents in ServiceNow from PagerDuty alerts.
+   - Follow the installation instructions and ensure the required configurations are done.
+
+### 2. **Configure ServiceNow in PagerDuty**:
+   - Log into **PagerDuty** and go to `Configuration > Extensions`.
+   - Click **Add an Extension** and search for **ServiceNow**.
+   - Choose **ServiceNow** from the list of available extensions and click **Install**.
+   - Provide your **ServiceNow instance URL** (e.g., `https://<instance_name>.service-now.com`).
+   - Configure the extension so that **PagerDuty incidents** automatically create or update **ServiceNow incidents**.
+
+### 3. **Set Up PagerDuty to Send Alerts to ServiceNow**:
+   - Go to `Configuration > Services` in PagerDuty.
+   - Choose the **service** that you want to integrate with ServiceNow.
+   - Under the **Integrations** tab of the service, add the **ServiceNow extension**.
+   - Define the conditions under which PagerDuty should trigger a ServiceNow incident (e.g., when a PagerDuty incident is triggered or escalated).
+
+### 4. **Configure Webhook in PagerDuty (Optional)**:
+   - In PagerDuty, go to `Configuration > Extensions > Webhooks`.
+   - Create a webhook and add your **ServiceNow instance URL** and the necessary authentication information.
+   - The webhook will notify ServiceNow when incidents in PagerDuty are triggered, acknowledged, or resolved.
+
+### 5. **Configure Incident Mapping in ServiceNow**:
+   - Once the extension is installed, go to **PagerDuty Settings** in ServiceNow.
+   - You can customize how PagerDuty alerts are mapped to ServiceNow incidents:
+     - Map **PagerDuty incident severity** to ServiceNow **incident priority**.
+     - Configure which **PagerDuty fields** (e.g., description, urgency) should be reflected in the ServiceNow incident.
+
+### 6. **Test the Integration**:
+   - Trigger a test alert in PagerDuty (e.g., simulate a failure that would generate a PagerDuty incident).
+   - Verify that an **incident is created in ServiceNow**.
+   - Make sure the incident details (e.g., description, severity) are properly passed from PagerDuty to ServiceNow.
+
+---
+
+### Summary:
+1. **Install the PagerDuty Integration** in ServiceNow.
+2. **Configure the ServiceNow Extension** in PagerDuty.
+3. **Set up services** in PagerDuty to send alerts to ServiceNow.
+4. **Test the setup** by triggering PagerDuty alerts and ensuring they create or update incidents in ServiceNow.
+
+This integration helps ensure all PagerDuty alerts are captured in ServiceNow as incidents for better incident management.
