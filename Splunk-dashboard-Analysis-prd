@@ -1,0 +1,106 @@
+###1.Seal Status
+| mstats latest(vault.core.unsealed.value) AS raw WHERE `vault_telemetry` AND cluster=$cluster$ AND $hostfilter$ BY host 
+| sort raw, host
+| eval seal_status=case(raw==0.0, "Sealed", raw==1.0, "Unsealed")
+| fields host,seal_status
+
+###2.CPU Usage
+| mstats max(cpu.usage_user) as user WHERE `vault_telemetry` AND cluster=$cluster$ AND (host=*) AND cpu=cpu-total AND $hostfilter$ BY host span=1m
+| timechart max(user) bins=1000 by host | eval critical=90.0
+
+###3.Memory Usage
+| mstats max(mem.used_percent) AS used WHERE `vault_telemetry` AND cluster=$cluster$ AND $hostfilter$ BY host span=30m
+| timechart bins=1000 max(used) BY host
+| eval critical=90.0
+
+###4.Top Activities
+| mstats sum(vault.route.*.count) AS raw_count.* where `vault_telemetry` AND cluster=$cluster$ BY metric_name
+| eval temp=split(metric_name, "."), operation=mvindex(temp,2), mount=mvindex(temp,3)
+| where operation != "rollback" and operation != "revoke"
+| foreach raw_count* 
+    [eval count=coalesce(count,'<<FIELD>>')]
+| eval slash_mount=replace(mount,"-","/")
+| strcat slash_mount ":" operation path
+| sort -count
+| head 15
+| table path,count
+
+###5.Number of tokens:
+| mstats latest(vault.token.count.value) as count where `vault_telemetry` AND cluster=$cluster$ by cluster, namespace span=1h 
+                  | stats sum(count) as count by _time
+                  | sort _time 
+                  | tail 1 
+                  | table count
+
+###6.Number of tokens by Auth method:
+| mstats sum(vault.token.creation.value) AS tokens WHERE `vault_telemetry` AND cluster=$cluster$ AND namespace IN ("*") AND mount_point IN ("*") AND auth_method IN ("*") AND creation_ttl IN (*) AND token_type=* BY auth_method span=1d | timechart bins=1000 sum(tokens) by auth_method | addtotals row=true
+
+
+###7.Number of tokens by policy
+| mstats latest(vault.token.count.by_policy.value) as count where `vault_telemetry` AND cluster=$cluster$ by policy span=10m
+| stats sum(count) as count by _time,policy
+| eventstats latest(_time) as latesttime
+| where _time == latesttime
+| append [makeresults 1 | eval policy="root", count=0]
+| stats max(count) as num_tokens by policy
+| eval root_count=if(policy=="root",num_tokens,0), count=if(policy=="root",0,num_tokens), is_root=if(policy=="root",1,0)
+| sort -is_root, -num_tokens
+| head 10
+| sort -num_tokens 
+| fields - num_tokens is_root
+
+
+###8.Kv secrets:
+| mstats latest(vault.secret.kv.count.value) AS count WHERE `vault_telemetry` AND cluster=$cluster$ BY mount_point span=10m
+| eval namespace=if(namespace=="root","",namespace)
+| strcat namespace "/" mount_point path
+| timechart bins=1000 max(count) as count by path
+| addtotals row=true
+
+###9.Leases created by secret Engines
+| mstats sum(vault.secret.lease.creation.value) AS leases WHERE `vault_telemetry` AND cluster=$cluster$ BY mount_point span=10m
+| eval namespace=if(namespace=="root","",namespace)
+| strcat namespace "/" mount_point path
+| timechart bins=1000 sum(leases) by path
+| addtotals row=true
+
+###10.K/V reads and lists by path
+sourcetype="hashicorp_vault_audit_log" index="vault-audit" mount_type :"kv" (operation :"list" OR operation :"read") host="cloud-infra-vault-prd-*" | timechart bins=1000 count by request.operation
+
+##Vault Requests
+
+###11.Requests by operation
+sourcetype="hashicorp_vault_audit_log" index="vault-audit" | spath type | search type=request| spath "request.operation" | stats count by request.operation
+
+###12.Requests by Role name
+sourcetype="hashicorp_vault_audit_log" index="vault-audit" | spath type | search type=response| spath "auth.metadata.role_name" | stats count by auth.metadata.role_name | sort - count | head 10
+
+###13.Requests handle time
+| mstats mean(vault.core.handle_request.mean) as latency where `vault_telemetry` AND cluster=$cluster$ span=1m
+| timechart bins=1000 mean(latency) as latency
+| eventstats perc90(latency) perc50(latency) | eval critical=20.0
+
+###14.Login Requests handle time
+| mstats mean(vault.core.handle_login_request.mean) as latency where `vault_telemetry` AND cluster=$cluster$ span=1m
+| timechart bins=1000 mean(latency) as latency
+| eventstats perc90(latency) perc50(latency)
+
+###15.Duration of list operation:
+| mstats latest(vault.raft-storage.list.mean) as latency where `vault_telemetry` AND cluster=$cluster$ span=1m
+| timechart bins=1000 mean(latency) as latency
+| eventstats perc90(latency) perc50(latency)
+
+###16.Duration of Get Operation
+| mstats latest(vault.raft-storage.get.mean) as latency where `vault_telemetry` AND cluster=$cluster$ span=1m
+| timechart bins=1000 mean(latency) as latency
+| eventstats perc90(latency) perc50(latency)
+
+###17.Duration of put Operation
+| mstats latest(vault.raft-storage.put.mean) as latency where `vault_telemetry` AND cluster=$cluster$ span=1m
+| timechart bins=1000 mean(latency) as latency
+| eventstats perc90(latency) perc50(latency)
+
+###18.Duration of Delete Operation
+| mstats latest(vault.raft-storage.delete.mean) as latency where `vault_telemetry` AND cluster=$cluster$ span=1m
+| timechart bins=1000 mean(latency) as latency
+| eventstats perc90(latency) perc50(latency)
