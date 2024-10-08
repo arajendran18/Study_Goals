@@ -1,288 +1,458 @@
-###1.Seal Status
-| mstats latest(vault.core.unsealed.value) AS raw WHERE `vault_telemetry` AND cluster=$cluster$ AND $hostfilter$ BY host 
+This document explains all the metrics which are actively being used in our monitoring tool (SPLUNK)
+
+The dashboard contains 18 panels which are broadly classified under following categories.
+
+Vault Highlights
+
+Secrets and tokens
+
+Vault Requests
+
+ 
+
+Monitoring panels used in Dashboards
+
+Category
+
+1	
+Seal Status
+
+Vault Highlights
+
+2	
+CPU Usage
+
+Vault Highlights
+
+3	
+Memory Usage
+
+Vault Highlights
+
+4	
+Top Activities
+
+Vault Highlights
+
+5	
+Number of tokens
+
+Secrets and Tokens
+
+6	
+Number of tokens by Auth method
+
+Secrets and Tokens
+
+7	
+Number of tokens by policy
+
+Secrets and Tokens
+
+8	
+KV secrets
+
+Secrets and Tokens
+
+9	
+Leases created by secret Engines
+
+Secrets and Tokens
+
+10	
+K/V reads and lists by path
+
+Secrets and Tokens
+
+11	
+Requests by operation
+
+Vault Requests
+
+12	
+Requests by Role name
+
+Vault Requests
+
+13	
+Requests handle time
+
+Vault Requests
+
+14	
+Login Requests handle time
+
+Vault Requests
+
+15	
+Duration of list operation
+
+Vault Requests
+
+16	
+Duration of Get Operation
+
+Vault Requests
+
+17	
+Duration of put Operation
+
+Vault Requests
+
+18	
+Duration of Delete Operation
+
+Vault Requests
+
+The following vault metrics are being used in our Splunk monitoring tool. Lets understand each panels.
+
+Seal Status
+
+
+
+
+| mstats latest(vault.core.unsealed.value) AS raw WHERE vault_telemetry AND cluster=$cluster$ AND $hostfilter$ BY host
 | sort raw, host
 | eval seal_status=case(raw==0.0, "Sealed", raw==1.0, "Unsealed")
 | fields host,seal_status
-
 Explanation:
 This Splunk query checks the seal status of Vault nodes based on telemetry metrics and presents it in a more readable format. Here's a breakdown:
 
-### Query Breakdown:
----------------------
+mstats latest(vault.core.unsealed.value) AS raw:
+        - mstats fetches metrics from Splunk's metric store.
+        - latest(vault.core.unsealed.value) retrieves the latest value of the metric vault.core.unsealed.value, which indicates whether the Vault node is sealed (0) or unsealed (1).
+        - AS raw renames the retrieved value as raw for easier reference later in the query.
 
-1. **`mstats latest(vault.core.unsealed.value) AS raw`**:
-           - `mstats` fetches metrics from Splunk's metric store.
-           - `latest(vault.core.unsealed.value)` retrieves the latest value of the metric `vault.core.unsealed.value`, which indicates whether the Vault node is sealed (0) or unsealed (1).
-           - `AS raw` renames the retrieved value as `raw` for easier reference later in the query.
+WHERE vault_telemetry AND cluster=$cluster$ AND $hostfilter$:
+        - vault_telemetry: Filters the query to only include data that corresponds to Vault telemetry events.
+        - cluster=$cluster$: Filters the data to only include results for the specified cluster (dynamic placeholder $cluster$).
+        - $hostfilter$: A placeholder that filters based on the host (dynamic value, likely from a dashboard).
 
-2. **`WHERE vault_telemetry AND cluster=$cluster$ AND $hostfilter$`**:
-           - `vault_telemetry`: Filters the query to only include data that corresponds to Vault telemetry events.
-           - `cluster=$cluster$`: Filters the data to only include results for the specified cluster (dynamic placeholder `$cluster$`).
-           - `$hostfilter$`: A placeholder that filters based on the host (dynamic value, likely from a dashboard).
+BY host:
+        - Groups the metrics data by each individual host, so you get the latest value of vault.core.unsealed.value for every host in the cluster.
 
-3. **`BY host`**:
-           - Groups the metrics data by each individual `host`, so you get the latest value of `vault.core.unsealed.value` for every host in the cluster.
+sort raw, host:
+        - Sorts the results first by the raw value (vault.core.unsealed.value) and then by host, ensuring that sealed/unsealed nodes appear in order.
 
-4. **`sort raw, host`**:
-           - Sorts the results first by the `raw` value (`vault.core.unsealed.value`) and then by `host`, ensuring that sealed/unsealed nodes appear in order.
+eval seal_status=case(raw==0.0, "Sealed", raw==1.0, "Unsealed"):
+        - eval: Defines a new field seal_status based on the value of raw.
+        - case(raw==0.0, "Sealed", raw==1.0, "Unsealed"): A conditional statement that maps raw values to human-readable text:
+          - If raw == 0.0, the node is "Sealed".
+          - If raw == 1.0, the node is "Unsealed".
 
-5. **`eval seal_status=case(raw==0.0, "Sealed", raw==1.0, "Unsealed")`**:
-           - `eval`: Defines a new field `seal_status` based on the value of `raw`.
-           - `case(raw==0.0, "Sealed", raw==1.0, "Unsealed")`: A conditional statement that maps `raw` values to human-readable text:
-             - If `raw == 0.0`, the node is `"Sealed"`.
-             - If `raw == 1.0`, the node is `"Unsealed"`.
+fields host,seal_status:
+         - Selects and displays only the host and seal_status fields, removing other unnecessary fields from the result.
 
-6. **`fields host,seal_status`**:
-            - Selects and displays only the `host` and `seal_status` fields, removing other unnecessary fields from the result.
+Result:
 
-### Result:
-- You get a list of Vault nodes (`host`) along with their seal status (`seal_status`), where:
-  - "Sealed" means the node is sealed and not available.
-  - "Unsealed" means the node is unsealed and operational.
-=================================================================================================================================
+You get a list of Vault nodes (host) along with their seal status (seal_status), where:
 
-###2.CPU Usage
-| mstats max(cpu.usage_user) as user WHERE `vault_telemetry` AND cluster=$cluster$ AND (host=*) AND cpu=cpu-total AND $hostfilter$ BY host span=1m
-| timechart max(user) bins=1000 by host | eval critical=90.0v
+"Sealed" means the node is sealed and not available.
 
-This Splunk query monitors **CPU usage** for Vault nodes based on telemetry data, specifically focusing on user CPU usage. Here's a breakdown of each part:
+"Unsealed" means the node is unsealed and operational.
 
-### Query Breakdown:
----------------------
-1. **`mstats max(cpu.usage_user) AS user`**:
-           - `mstats`: Retrieves metrics from Splunk's metric store (for time-series data).
-           - `max(cpu.usage_user)`: Fetches the maximum CPU usage percentage by user processes (`cpu.usage_user` represents the percentage of CPU consumed by user-level processes).
-           - `AS user`: Renames this value as `user` for easier reference in later parts of the query.
+Open image-20241008-074246.png
+image-20241008-074246.png
+Visual Representation:
 
-2. **`WHERE vault_telemetry AND cluster=$cluster$ AND (host=*) AND cpu=cpu-total AND $hostfilter$`**:
-           - `vault_telemetry`: Filters the query to include only Vault telemetry events.
-           - `cluster=$cluster$`: Filters the data to focus on the specified cluster (based on a dynamic placeholder `$cluster$`).
-           - `(host=*)`: Includes data from all hosts in the cluster (fetches CPU metrics for all nodes).
-           - `cpu=cpu-total`: Filters to include only metrics for total CPU usage (`cpu-total`), aggregating across all cores.
-           - `$hostfilter$`: Another placeholder to filter by host, based on input from a dashboard or user selection.
+Open image-20241004-093345.png
+image-20241004-093345.png
+CPU Usage
 
-3. **`BY host span=1m`**:
-           - `BY host`: Groups the CPU metrics by individual hosts, so you get separate data for each Vault node.
-           - `span=1m`: Groups the data into 1-minute intervals, providing time-based granularity for CPU usage.
 
-4. **`timechart max(user) bins=1000 BY host`**:
-           - `timechart`: Creates a time-based chart.
-           - `max(user)`: Plots the maximum value of `user` CPU usage for each 1-minute interval.
-           - `bins=1000`: Sets the number of data points (bins) to a maximum of 1000.
-           - `BY host`: Groups the chart by host, so the CPU usage of each node is plotted separately.
 
-5. **`eval critical=90.0`**:
-           - `eval critical=90.0`: Adds a new field called `critical` and assigns it the value `90.0`. This value represents a critical threshold for CPU usage—typically, it means that if CPU usage exceeds 90%, it could be considered problematic.
+| mstats max(cpu.usage_user) as user WHERE vault_telemetry AND cluster=$cluster$ AND (host=*) AND cpu=cpu-total AND $hostfilter$ BY host span=1m
+| timechart max(user) bins=1000 by host | eval critical=90.0
+Explanation:
 
-### Final Output:
+This Splunk query monitors CPU usage for Vault nodes based on telemetry data, specifically focusing on user CPU usage. Here's a breakdown of each part:
+
+mstats max(cpu.usage_user) AS user:
+        - mstats: Retrieves metrics from Splunk's metric store (for time-series data).
+        - max(cpu.usage_user): Fetches the maximum CPU usage percentage by user processes (cpu.usage_user represents the percentage of CPU consumed by user-level processes).
+        - AS user: Renames this value as user for easier reference in later parts of the query.
+
+WHERE vault_telemetry AND cluster=$cluster$ AND (host=*) AND cpu=cpu-total AND $hostfilter$:
+        - vault_telemetry: Filters the query to include only Vault telemetry events.
+        - cluster=$cluster$: Filters the data to focus on the specified cluster (based on a dynamic placeholder $cluster$).
+        - (host=*): Includes data from all hosts in the cluster (fetches CPU metrics for all nodes).
+        - cpu=cpu-total: Filters to include only metrics for total CPU usage (cpu-total), aggregating across all cores.
+        - $hostfilter$: Another placeholder to filter by host, based on input from a dashboard or user selection.
+
+BY host span=1m:
+        - BY host: Groups the CPU metrics by individual hosts, so you get separate data for each Vault node.
+        - span=1m: Groups the data into 1-minute intervals, providing time-based granularity for CPU usage.
+
+timechart max(user) bins=1000 BY host:
+        - timechart: Creates a time-based chart.
+        - max(user): Plots the maximum value of user CPU usage for each 1-minute interval.
+        - bins=1000: Sets the number of data points (bins) to a maximum of 1000.
+        - BY host: Groups the chart by host, so the CPU usage of each node is plotted separately.
+
+eval critical=90.0:
+        - eval critical=90.0: Adds a new field called critical and assigns it the value 90.0. This value represents a critical threshold for CPU usage—typically, it means that if CPU usage exceeds 90%, it could be considered problematic.
+
+Result:
+
 You get a time chart of CPU usage for each Vault node, showing the maximum user CPU usage at each 1-minute interval, with a critical threshold of 90% defined for analysis.
-===================================================================================================================================
 
-###3.Memory Usage
-| mstats max(mem.used_percent) AS used WHERE `vault_telemetry` AND cluster=$cluster$ AND $hostfilter$ BY host span=30m
+Open image-20241008-064654.png
+image-20241008-064654.png
+Visual Representation:
+
+Open image-20241008-064913.png
+image-20241008-064913.png
+ 
+
+Memory Usage
+
+
+
+| mstats max(mem.used_percent) AS used WHERE vault_telemetry AND cluster=$cluster$ AND $hostfilter$ BY host span=30m
 | timechart bins=1000 max(used) BY host
 | eval critical=90.0
+Explanation:
 
 This Splunk query is used to monitor memory usage for Vault nodes by fetching telemetry data, focusing on the percentage of used memory. It also establishes a critical threshold for memory usage. Here’s a detailed explanation of each part:
 
-### Query Breakdown:
-----------------------
-1. **`mstats max(mem.used_percent) AS used`**:
-           - **`mstats`**: Retrieves time-series data from Splunk’s metric store.
-           - **`max(mem.used_percent)`**: Fetches the **maximum percentage of memory used** (`mem.used_percent`) for each time period. This metric represents how much of the system's memory is currently in use as a percentage of the total available memory.
-           - **`AS used`**: Renames this value as `used` for easier reference in later parts of the query.
+mstats max(mem.used_percent) AS used:
+        - mstats: Retrieves time-series data from Splunk’s metric store.
+        - max(mem.used_percent): Fetches the maximum percentage of memory used (mem.used_percent) for each time period. This metric represents how much of the system's memory is currently in use as a percentage of the total available memory.
+        - AS used: Renames this value as used for easier reference in later parts of the query.
 
-2. **`WHERE vault_telemetry AND cluster=$cluster$ AND $hostfilter$`**:
-           - **`vault_telemetry`**: Filters the results to include only Vault telemetry events.
-           - **`cluster=$cluster$`**: A placeholder for filtering the data based on a specific Vault cluster. The `$cluster$` is a dynamic variable that can be set from a dashboard or user input.
-           - **`$hostfilter$`**: Another placeholder that filters the results based on specific hosts (Vault nodes). This dynamic filter can also be specified in a dashboard or query input.
+WHERE vault_telemetry AND cluster=$cluster$ AND $hostfilter$:
+        - vault_telemetry: Filters the results to include only Vault telemetry events.
+        - cluster=$cluster$: A placeholder for filtering the data based on a specific Vault cluster. The $cluster$ is a dynamic variable that can be set from a dashboard or user input.
+        - $hostfilter$: Another placeholder that filters the results based on specific hosts (Vault nodes). This dynamic filter can also be specified in a dashboard or query input.
 
-3. **`BY host span=30m`**:
-           - **`BY host`**: Groups the memory usage data by each individual host (Vault node).
-           - **`span=30m`**: Splunk divides the data into **30-minute intervals**. This means that for every 30 minutes, Splunk will calculate and record the maximum memory usage percentage for each host.
+BY host span=30m:
+        - BY host: Groups the memory usage data by each individual host (Vault node).
+        - span=30m: Splunk divides the data into 30-minute intervals. This means that for every 30 minutes, Splunk will calculate and record the maximum memory usage percentage for each host.
 
-4. **`timechart bins=1000 max(used) BY host`**:
-           - **`timechart`**: Creates a time-based chart of memory usage over time.
-           - **`bins=1000`**: Divides the time range into **1000 data points (bins)** to display memory usage. This gives you a **high-resolution** chart with 1000 intervals, which helps visualize trends in memory usage over time. Each bin represents a time interval, and the width of each bin depends on the total time span of the data.
-           - **`max(used)`**: For each time interval (bin), it shows the **maximum memory usage percentage** recorded in that interval.
-           - **`BY host`**: Plots the memory usage separately for each host (Vault node), so you can track memory consumption across different nodes in the cluster.
+timechart bins=1000 max(used) BY host:
+        - timechart: Creates a time-based chart of memory usage over time.
+        - bins=1000: Divides the time range into 1000 data points (bins) to display memory usage. This gives you a high-resolution chart with 1000 intervals, which helps visualize trends in memory usage over time. Each bin represents a time interval, and the width of each bin depends on the total time span of the data.
+        - max(used): For each time interval (bin), it shows the maximum memory usage percentage recorded in that interval.
+        - BY host: Plots the memory usage separately for each host (Vault node), so you can track memory consumption across different nodes in the cluster.
 
-5. **`eval critical=90.0`**:
-           - **`eval critical=90.0`**: Adds a new field called `critical` and assigns it the value **90.0**. This means that **90% memory usage** is considered a **critical threshold**. This value can be used later in the query or in alerts to identify if any hosts exceed 90% memory usage, which could indicate a potential issue.
+eval critical=90.0:
+        - eval critical=90.0: Adds a new field called critical and assigns it the value 90.0. This means that 90% memory usage is considered a critical threshold. This value can be used later in the query or in alerts to identify if any hosts exceed 90% memory usage, which could indicate a potential issue.
 
-### Summary:
-This query monitors the **maximum memory usage percentage** of Vault nodes over time, splitting the data into **30-minute intervals** and grouping by each host. The result is displayed in a timechart with **1000 bins** (high resolution), showing memory usage trends across multiple Vault nodes. It also defines a **critical threshold of 90%** memory usage, which can be used to flag any host that exceeds this limit.
+ 
 
-### Use Case:
-You can use this query to track memory usage on your Vault nodes, identify potential memory bottlenecks, and ensure that no nodes are running critically low on memory (exceeding the 90% threshold). This helps in maintaining the health of the Vault cluster and ensuring performance stability.
-===================================================================================================================================
+Result:
 
-###4.Top Activities
-| mstats sum(vault.route.*.count) AS raw_count.* where `vault_telemetry` AND cluster=$cluster$ BY metric_name
+Open image-20241008-065053.png
+image-20241008-065053.png
+Visual Representation:
+
+Open image-20241008-065132.png
+image-20241008-065132.png
+ 
+
+Top Activities
+
+
+
+| mstats sum(vault.route.*.count) AS raw_count. where vault_telemetry AND cluster=$cluster$ BY metric_name
 | eval temp=split(metric_name, "."), operation=mvindex(temp,2), mount=mvindex(temp,3)
 | where operation != "rollback" and operation != "revoke"
-| foreach raw_count* 
+| foreach raw_count*
     [eval count=coalesce(count,'<<FIELD>>')]
 | eval slash_mount=replace(mount,"-","/")
 | strcat slash_mount ":" operation path
 | sort -count
 | head 15
 | table path,count
+Explanation:
 
-This Splunk query is used to analyze Vault telemetry data, specifically focusing on API request counts (`vault.route.*.count`). It processes the data to extract meaningful details about different operations (such as read, write, etc.) performed on different Vault mounts, and it then displays the top 15 most frequent operations.
+This Splunk query is used to analyse Vault telemetry data, specifically focusing on API request counts (vault.route.*.count). It processes the data to extract meaningful details about different operations (such as read, write, etc.) performed on different Vault mounts, and it then displays the top 15 most frequent operations.
 
-Here’s a detailed breakdown of each part of the query:
+ 
 
-### Query Breakdown:
+mstats sum(vault.route.*.count) AS raw_count.* where \\vault_telemetry\ AND cluster=$cluster$ BY metric_name:
+        - mstats sum(vault.route.*.count): This retrieves time-series data from Splunk’s metric store. Specifically, it sums the counts of Vault API requests represented by the vault.route.*.count metrics. Each API request Vault processes is tracked under vault.route.[operation].[mount].count.
+          - operation refers to the type of request (e.g., read, write).
+          - mount refers to the Vault secret engine or path being accessed.
+        - AS raw_count.*: Renames the summed counts to raw_count.* to make it easier to work with these values later.
+        - where \\vault_telemetry\``: Filters the data to include only Vault telemetry events.
+        - AND cluster=$cluster$: Filters the data based on the specific Vault cluster, using a dynamic variable $cluster$, which would be set from a dashboard or input.
+        - BY metric_name: Groups the results by the metric_name, which in this case is the name of the metric (vault.route.*.count), helping to identify which operation and mount are associated with each request count.
 
-1. **`mstats sum(vault.route.*.count) AS raw_count.* where \`vault_telemetry\` AND cluster=$cluster$ BY metric_name`**:
-           - **`mstats sum(vault.route.*.count)`**: This retrieves time-series data from Splunk’s metric store. Specifically, it sums the **counts of Vault API requests** represented by the `vault.route.*.count` metrics. Each API request Vault processes is tracked under `vault.route.[operation].[mount].count`.
-             - `operation` refers to the type of request (e.g., read, write).
-             - `mount` refers to the Vault secret engine or path being accessed.
-           - **`AS raw_count.*`**: Renames the summed counts to `raw_count.*` to make it easier to work with these values later.
-           - **`where \`vault_telemetry\``**: Filters the data to include only **Vault telemetry** events.
-           - **`AND cluster=$cluster$`**: Filters the data based on the specific Vault cluster, using a dynamic variable `$cluster$`, which would be set from a dashboard or input.
-           - **`BY metric_name`**: Groups the results by the **`metric_name`**, which in this case is the name of the metric (`vault.route.*.count`), helping to identify which operation and mount are associated with each request count.
+eval temp=split(metric_name, "."), operation=mvindex(temp,2), mount=mvindex(temp,3):
+        - split(metric_name, "."): Splits the metric_name (e.g., vault.route.read.some_mount.count) by periods (.). This creates an array temp where each part of the metric name (operation, mount, etc.) is an individual element.
+        - mvindex(temp,2): Extracts the third element (0-based index) from the temp array, which corresponds to the operation (e.g., read, write, etc.).
+        - mvindex(temp,3): Extracts the fourth element from the temp array, which corresponds to the mount (e.g., the path or secret engine being accessed).
 
-2. **`eval temp=split(metric_name, "."), operation=mvindex(temp,2), mount=mvindex(temp,3)`**:
-           - **`split(metric_name, ".")`**: Splits the `metric_name` (e.g., `vault.route.read.some_mount.count`) by periods (`.`). This creates an array `temp` where each part of the metric name (operation, mount, etc.) is an individual element.
-           - **`mvindex(temp,2)`**: Extracts the **third element** (0-based index) from the `temp` array, which corresponds to the **operation** (e.g., `read`, `write`, etc.).
-           - **`mvindex(temp,3)`**: Extracts the **fourth element** from the `temp` array, which corresponds to the **mount** (e.g., the path or secret engine being accessed).
+where operation != "rollback" and operation != "revoke":
+        - Filters out requests where the operation is either rollback or revoke, which are typically less relevant for analyzing standard Vault access patterns. You are likely more interested in operations like read, write, etc.
 
-3. **`where operation != "rollback" and operation != "revoke"`**:
-           - Filters out requests where the **operation** is either `rollback` or `revoke`, which are typically less relevant for analyzing standard Vault access patterns. You are likely more interested in operations like read, write, etc.
+foreach raw_count* [eval count=coalesce(count,'<<FIELD>>')]:
+        - foreach raw_count*: Loops over all fields that start with raw_count. In this case, it processes each field that holds the summed request counts.
+        - eval count=coalesce(count,'<<FIELD>>'): For each iteration, the coalesce function assigns the value from the raw_count fields to the count field if count is null. Essentially, this ensures that the count field holds the total request count.
 
-4. **`foreach raw_count* [eval count=coalesce(count,'<<FIELD>>')]`**:
-           - **`foreach raw_count*`**: Loops over all fields that start with `raw_count`. In this case, it processes each field that holds the summed request counts.
-           - **`eval count=coalesce(count,'<<FIELD>>')`**: For each iteration, the `coalesce` function assigns the value from the `raw_count` fields to the **`count`** field if `count` is null. Essentially, this ensures that the **`count`** field holds the total request count.
+eval slash_mount=replace(mount,"-","/"):
+        - Replaces hyphens (-) in the mount with slashes (/). This converts the Vault mount name into a more readable format that resembles a filesystem path (e.g., some-mount becomes some/mount).
 
-5. **`eval slash_mount=replace(mount,"-","/")`**:
-           - Replaces hyphens (`-`) in the **mount** with slashes (`/`). This converts the Vault mount name into a more readable format that resembles a filesystem path (e.g., `some-mount` becomes `some/mount`).
+strcat slash_mount ":" operation path:
+        - Concatenates the mount (now converted to a path format using slashes) and the operation with a colon (:) in between. This creates a field called path that represents the specific Vault mount and operation (e.g., some/mount:read).
 
-6. **`strcat slash_mount ":" operation path`**:
-           - Concatenates the **mount** (now converted to a path format using slashes) and the **operation** with a colon (`:`) in between. This creates a field called **`path`** that represents the specific Vault mount and operation (e.g., `some/mount:read`).
+sort -count:
+        - Sorts the results in descending order based on the count. This prioritizes the most frequent operations.
 
-7. **`sort -count`**:
-           - Sorts the results in **descending order** based on the **count**. This prioritizes the most frequent operations.
+head 15:
+        - Limits the results to the top 15 most frequent operations (those with the highest request counts).
 
-8. **`head 15`**:
-           - Limits the results to the **top 15** most frequent operations (those with the highest request counts).
+table path, count:
+        - Displays only the path (operation on a Vault mount) and the count (number of times that operation was performed) in the final output.
 
-9. **`table path, count`**:
-           - Displays only the **`path`** (operation on a Vault mount) and the **`count`** (number of times that operation was performed) in the final output.
+Result:
 
-### Example Output:
 The output would be a table with two columns:
-- **`path`**: Shows the operation and the mount it was performed on, formatted like `some/mount:read`.
-- **`count`**: Shows the number of times this operation was performed on that particular mount.
+
+path: Shows the operation and the mount it was performed on, formatted like some/mount:read.
+
+count: Shows the number of times this operation was performed on that particular mount.
 
 For example:
-| path                | count |
-|---------------------|-------|
-| secret/data:read    | 1200  |
-| secret/metadata:read| 900   |
-| secret/data:write   | 850   |
 
-### Summary:
-This query analyzes Vault's telemetry data to identify the most frequent operations (like read, write) performed on various mounts (secret engines or paths). It filters out irrelevant operations, processes the data to create readable path names, sorts them by the number of requests, and shows the top 15 operations by frequency. This helps in identifying which mounts and operations are most heavily accessed in the Vault cluster.
-=================================================================================================================================
+Open image-20241008-065428.png
+image-20241008-065428.png
+Visual Representation:
 
-###5.Number of tokens:
-| mstats latest(vault.token.count.value) as count where `vault_telemetry` AND cluster=$cluster$ by cluster, namespace span=1h 
+Open image-20241008-065529.png
+image-20241008-065529.png
+ 
+
+Number of tokens
+
+
+
+| mstats latest(vault.token.count.value) as count where vault_telemetry AND cluster=$cluster$ by cluster, namespace span=1h
                   | stats sum(count) as count by _time
-                  | sort _time 
-                  | tail 1 
+                  | sort _time
+                  | tail 1
                   | table count
+
+Explanation:
+
 This Splunk query is used to monitor the number of tokens in a Vault cluster over a specified time period. It focuses on aggregating and retrieving the latest count of tokens and presenting that information in a simplified format. Here’s a detailed breakdown of each part of the query:
 
-### Query Breakdown:
+mstats latest(vault.token.count.value) as count:
+        - mstats: Retrieves time-series data from Splunk’s metric store.
+        - latest(vault.token.count.value): Fetches the latest value of the token count metric. This metric represents the current number of active tokens in the Vault.
+        - as count: Renames this latest token count value to count for easier reference in subsequent steps.
 
-1. **`mstats latest(vault.token.count.value) as count`**:
-           - **`mstats`**: Retrieves time-series data from Splunk’s metric store.
-           - **`latest(vault.token.count.value)`**: Fetches the **latest value of the token count** metric. This metric represents the current number of active tokens in the Vault.
-           - **`as count`**: Renames this latest token count value to **`count`** for easier reference in subsequent steps.
+where \\vault_telemetry\ AND cluster=$cluster$:
+        - \\vault_telemetry\``: Filters the results to include only Vault telemetry events.
+        - AND cluster=$cluster$: Filters the data based on a specific Vault cluster. The $cluster$ is a dynamic variable that can be set from a dashboard or user input.
 
-2. **`where \`vault_telemetry\` AND cluster=$cluster$`**:
-           - **`\`vault_telemetry\``**: Filters the results to include only **Vault telemetry** events.
-           - **`AND cluster=$cluster$`**: Filters the data based on a specific Vault cluster. The `$cluster$` is a dynamic variable that can be set from a dashboard or user input.
+by cluster, namespace span=1h:
+        - by cluster, namespace: Groups the results by cluster and namespace. This means that it will summarize the latest token counts separately for each cluster and namespace combination.
+        - span=1h: Specifies that the data should be aggregated over 1-hour intervals. This allows for tracking changes in token counts over that hour.
 
-3. **`by cluster, namespace span=1h`**:
-           - **`by cluster, namespace`**: Groups the results by **cluster** and **namespace**. This means that it will summarize the latest token counts separately for each cluster and namespace combination.
-           - **`span=1h`**: Specifies that the data should be aggregated over **1-hour intervals**. This allows for tracking changes in token counts over that hour.
+stats sum(count) as count by _time:
+        - stats: Aggregates the data.
+        - sum(count) as count: Sums the count of tokens for each time period (1-hour intervals). This gives the total number of tokens present during that interval.
+        - by _time: Groups the sum by time, meaning the token count is aggregated and displayed for each hour.
 
-4. **`stats sum(count) as count by _time`**:
-           - **`stats`**: Aggregates the data.
-           - **`sum(count) as count`**: Sums the `count` of tokens for each time period (1-hour intervals). This gives the total number of tokens present during that interval.
-           - **`by _time`**: Groups the sum by **time**, meaning the token count is aggregated and displayed for each hour.
+sort _time:
+        - Sorts the results in ascending order based on the _time field. This organizes the results chronologically.
 
-5. **`sort _time`**:
-           - Sorts the results in **ascending order** based on the **_time** field. This organizes the results chronologically.
+tail 1:
+        - Retrieves the last entry from the sorted results, which represents the most recent 1-hour token count. Since the results are sorted by time, this will give you the total number of tokens for the most recent hour.
 
-6. **`tail 1`**:
-           - Retrieves the **last entry** from the sorted results, which represents the most recent 1-hour token count. Since the results are sorted by time, this will give you the total number of tokens for the most recent hour.
+table count:
+        - Formats the output to display only the count of tokens in a simple table format.
 
-7. **`table count`**:
-           - Formats the output to display only the **`count`** of tokens in a simple table format.
+Result:
 
-### Example Output:
-The output of this query will be a table with a single column showing the **total number of tokens** for the most recent hour.
+The output of this query will be a table with a single column showing the total number of tokens for the most recent hour.
 
-| count |
-|-------|
-| 150   |
+Open image-20241008-065720.png
+image-20241008-065720.png
+Visual Representation:
 
-### Summary:
-This query monitors the **latest count of tokens** in a specified Vault cluster, aggregated over the most recent hour. It retrieves the token counts by cluster and namespace, sums them up, sorts them chronologically, and presents the most recent total in a table. This can help administrators understand how many tokens are currently active in their Vault environment and monitor usage trends over time.
-=====================================================================================================================================
-###6.Number of tokens by Auth method:
-| mstats sum(vault.token.creation.value) AS tokens WHERE `vault_telemetry` AND cluster=$cluster$ AND namespace IN ("*") AND mount_point IN ("*") AND auth_method IN ("*") AND creation_ttl IN (*) AND token_type=* BY auth_method span=1d | timechart bins=1000 sum(tokens) by auth_method | addtotals row=true
+Open image-20241008-065751.png
+image-20241008-065751.png
+Number of tokens by Auth method:
 
-This Splunk query is designed to analyze the number of tokens created in a Vault cluster, categorized by authentication methods over a one-day period. It aggregates the token creation metrics and presents them in a time chart for better visualization and understanding. Here’s a detailed breakdown of each part of the query:
 
-### Query Breakdown:
 
-1. **`mstats sum(vault.token.creation.value) AS tokens`**:
-   - **`mstats`**: Retrieves time-series data from Splunk’s metric store.
-   - **`sum(vault.token.creation.value)`**: Sums the values of the **token creation metrics**. Each metric represents the number of tokens created over time.
-   - **`AS tokens`**: Renames the summed token creation values to **`tokens`** for easier reference in the next steps.
+| mstats sum(vault.token.creation.value) AS tokens WHERE `vault_telemetry` AND cluster=$cluster$ AND namespace IN ("*") AND mount_point IN ("*") AND auth_method IN ("*") AND creation_ttl IN (*) AND token_type=* BY auth_method span=1d 
+| timechart bins=1000 sum(tokens) by auth_method 
+| addtotals row=true
+Explanation:
 
-2. **`WHERE \`vault_telemetry\` AND cluster=$cluster$`**:
-   - **`\`vault_telemetry\``**: Filters the results to include only **Vault telemetry** events.
-   - **`AND cluster=$cluster$`**: Filters the data based on a specific Vault cluster using the dynamic variable `$cluster$`.
+This Splunk query is designed to analyse the number of tokens created in a Vault cluster, categorized by authentication methods over a one-day period. It aggregates the token creation metrics and presents them in a time chart for better visualization and understanding. Here’s a detailed breakdown of each part of the query:
 
-3. **`AND namespace IN ("*")`**:
-   - This condition specifies that results should include all **namespaces**. The wildcard `"*"` indicates no filtering based on namespaces, meaning all namespaces are considered.
+mstats sum(vault.token.creation.value) AS tokens:
 
-4. **`AND mount_point IN ("*")`**:
-   - Similar to the namespace condition, this specifies that results should include all **mount points** (e.g., different secret engines or paths). The wildcard `"*"` allows for all mount points to be included in the results.
+mstats: Retrieves time-series data from Splunk’s metric store.
 
-5. **`AND auth_method IN ("*")`**:
-   - This condition states that results should include all **authentication methods**. Again, the wildcard `"*"` means no filtering is applied, and all auth methods are considered.
+sum(vault.token.creation.value): Sums the values of the token creation metrics. Each metric represents the number of tokens created over time.
 
-6. **`AND creation_ttl IN (*)`**:
-   - This condition allows for including all **creation time-to-live (TTL)** settings. The absence of specific filtering means all TTLs are included in the analysis.
+AS tokens: Renames the summed token creation values to tokens for easier reference in the next steps.
 
-7. **`AND token_type=*`**:
-   - This condition allows for including all **token types** in the query results. It does not impose any restrictions on the token types being analyzed.
+WHERE \\vault_telemetry\ AND cluster=$cluster$:
 
-8. **`BY auth_method span=1d`**:
-   - **`BY auth_method`**: Groups the results by **authentication method**. This means that the total number of tokens created will be calculated separately for each authentication method.
-   - **`span=1d`**: Specifies that the data should be aggregated over a **1-day** period, meaning token creation counts are summed for each day.
+\\vault_telemetry\``: Filters the results to include only Vault telemetry events.
 
-9. **`| timechart bins=1000 sum(tokens) by auth_method`**:
-   - **`timechart`**: Generates a time-series chart based on the aggregated data.
-   - **`bins=1000`**: Sets the maximum number of data points (bins) for the chart to **1000**. This allows for a detailed view of the data over the selected time span.
-   - **`sum(tokens) by auth_method`**: Plots the total number of tokens created, grouped by **authentication method**. Each auth method will have its own line in the chart, representing token creation over time.
+AND cluster=$cluster$: Filters the data based on a specific Vault cluster using the dynamic variable $cluster$.
 
-10. **`| addtotals row=true`**:
-    - This command adds a **total row** to the chart. It summarizes the total number of tokens created across all authentication methods and adds it as a new row in the output. Setting `row=true` ensures that the total is included.
+AND namespace IN ("*"):
 
-### Summary:
-This query aggregates the **number of tokens created** in a Vault cluster over a one-day period, categorized by authentication methods. It retrieves token creation metrics from the telemetry data, groups them by auth method, and generates a time chart to visualize the token creation trends. The final output includes both individual auth method counts and a total count for all methods, providing insights into how different authentication methods are being utilized in the Vault environment.
-====================================================================================================================================
+This condition specifies that results should include all namespaces. The wildcard "*" indicates no filtering based on namespaces, meaning all namespaces are considered.
 
-###7.Number of tokens by policy
-| mstats latest(vault.token.count.by_policy.value) as count where `vault_telemetry` AND cluster=$cluster$ by policy span=10m
+AND mount_point IN ("*"):
+
+Similar to the namespace condition, this specifies that results should include all mount points (e.g., different secret engines or paths). The wildcard "*" allows for all mount points to be included in the results.
+
+AND auth_method IN ("*"):
+
+This condition states that results should include all authentication methods. Again, the wildcard "*" means no filtering is applied, and all auth methods are considered.
+
+AND creation_ttl IN (*):
+
+This condition allows for including all creation time-to-live (TTL) settings. The absence of specific filtering means all TTLs are included in the analysis.
+
+AND token_type=*:
+
+This condition allows for including all token types in the query results. It does not impose any restrictions on the token types being analyzed.
+
+BY auth_method span=1d:
+
+BY auth_method: Groups the results by authentication method. This means that the total number of tokens created will be calculated separately for each authentication method.
+
+span=1d: Specifies that the data should be aggregated over a 1-day period, meaning token creation counts are summed for each day.
+
+| timechart bins=1000 sum(tokens) by auth_method:
+
+timechart: Generates a time-series chart based on the aggregated data.
+
+bins=1000: Sets the maximum number of data points (bins) for the chart to 1000. This allows for a detailed view of the data over the selected time span.
+
+sum(tokens) by auth_method: Plots the total number of tokens created, grouped by authentication method. Each auth method will have its own line in the chart, representing token creation over time.
+
+| addtotals row=true:
+
+This command adds a total row to the chart. It summarizes the total number of tokens created across all authentication methods and adds it as a new row in the output. Setting row=true ensures that the total is included.
+
+Note: This query aggregates the number of tokens created in a Vault cluster over a one-day period, categorized by authentication methods. It retrieves token creation metrics from the telemetry data, groups them by auth method, and generates a time chart to visualize the token creation trends. The final output includes both individual auth method counts and a total count for all methods, providing insights into how different authentication methods are being utilized in the Vault environment.
+
+Result:
+
+Open image-20241008-070227.png
+image-20241008-070227.png
+Visual Representation:
+
+Open image-20241008-070049.png
+image-20241008-070049.png
+Number of tokens by policy
+
+
+
+| mstats latest(vault.token.count.by_policy.value) as count where vault_telemetry AND cluster=$cluster$ by policy span=10m
 | stats sum(count) as count by _time,policy
 | eventstats latest(_time) as latesttime
 | where _time == latesttime
@@ -291,580 +461,721 @@ This query aggregates the **number of tokens created** in a Vault cluster over a
 | eval root_count=if(policy=="root",num_tokens,0), count=if(policy=="root",0,num_tokens), is_root=if(policy=="root",1,0)
 | sort -is_root, -num_tokens
 | head 10
-| sort -num_tokens 
+| sort -num_tokens
 | fields - num_tokens is_root
+Explanation: 
 
 This Splunk query is designed to analyze and present the latest token counts for different policies in a Vault environment. It focuses on obtaining the latest token counts, ensuring the root policy is included, and sorting the results for better insights. Here's a detailed breakdown of each part of the query:
 
-### Query Breakdown:
+mstats latest(vault.token.count.by_policy.value) as count:
 
-1. **`mstats latest(vault.token.count.by_policy.value) as count`**:
-   - **`mstats`**: Retrieves time-series data from Splunk's metric store.
-   - **`latest(vault.token.count.by_policy.value)`**: Fetches the **latest value of token counts** associated with different policies. This metric tracks the number of tokens issued based on various policies.
-   - **`as count`**: Renames this latest token count value to **`count`** for easier reference in subsequent steps.
+mstats: Retrieves time-series data from Splunk's metric store.
 
-2. **`WHERE \`vault_telemetry\` AND cluster=$cluster$`**:
-   - **`\`vault_telemetry\``**: Filters the results to include only **Vault telemetry** events.
-   - **`AND cluster=$cluster$`**: Filters the data based on a specific Vault cluster, using the dynamic variable `$cluster$`.
+latest(vault.token.count.by_policy.value): Fetches the latest value of token counts associated with different policies. This metric tracks the number of tokens issued based on various policies.
 
-3. **`BY policy span=10m`**:
-   - **`BY policy`**: Groups the results by **policy**. This means the query will return token counts separately for each policy.
-   - **`span=10m`**: Specifies that the data should be aggregated over **10-minute intervals**, meaning the latest token counts are evaluated for every 10-minute period.
+as count: Renames this latest token count value to count for easier reference in subsequent steps.
 
-4. **`| stats sum(count) as count by _time, policy`**:
-   - **`stats`**: Aggregates the data.
-   - **`sum(count) as count`**: Sums the token counts for each policy at each time interval.
-   - **`by _time, policy`**: Groups the results by both **time** and **policy**, providing a total token count for each policy at each time point.
+WHERE \\vault_telemetry\ AND cluster=$cluster$:
 
-5. **`| eventstats latest(_time) as latesttime`**:
-   - **`eventstats`**: Computes statistics across events and adds them to the original events.
-   - **`latest(_time) as latesttime`**: Finds the **latest time** across all the results and stores it as **`latesttime`** for later filtering.
+\\vault_telemetry\``: Filters the results to include only Vault telemetry events.
 
-6. **`| where _time == latesttime`**:
-   - Filters the results to only include the entries where the **time** matches the **latest time** found in the previous step. This ensures that only the most recent token counts for each policy are retained.
+AND cluster=$cluster$: Filters the data based on a specific Vault cluster, using the dynamic variable $cluster$.
 
-7. **`| append [makeresults 1 | eval policy="root", count=0]`**:
-   - **`append`**: Combines additional results with the current results.
-   - **`[makeresults 1 | eval policy="root", count=0]`**: Creates a new event with a **policy** labeled as `"root"` and a **count** of `0`. This ensures that the root policy is included in the results, even if it has no tokens.
+BY policy span=10m:
 
-8. **`| stats max(count) as num_tokens by policy`**:
-   - **`stats`**: Aggregates the data again.
-   - **`max(count) as num_tokens`**: Takes the maximum token count for each policy and renames it to **`num_tokens`**.
+BY policy: Groups the results by policy. This means the query will return token counts separately for each policy.
 
-9. **`| eval root_count=if(policy=="root", num_tokens, 0)`**:
-   - This line creates a new field called **`root_count`**. If the policy is `"root"`, it assigns the **`num_tokens`** value; otherwise, it assigns `0`.
+span=10m: Specifies that the data should be aggregated over 10-minute intervals, meaning the latest token counts are evaluated for every 10-minute period.
 
-10. **`| eval count=if(policy=="root", 0, num_tokens)`**:
-    - Creates a new field called **`count`**. If the policy is `"root"`, it assigns `0` to `count`; otherwise, it assigns the value of **`num_tokens`**.
+| stats sum(count) as count by _time, policy:
 
-11. **`| eval is_root=if(policy=="root", 1, 0)`**:
-    - Creates a new field called **`is_root`**. If the policy is `"root"`, it assigns `1`; otherwise, it assigns `0`. This field is used for sorting later.
+stats: Aggregates the data.
 
-12. **`| sort -is_root, -num_tokens`**:
-    - **`sort`**: Sorts the results.
-    - **`-is_root`**: Sorts in descending order by **`is_root`** so that the root policy appears first.
-    - **`-num_tokens`**: Sorts in descending order by **`num_tokens`** within each group, meaning policies with more tokens will appear before those with fewer tokens.
+sum(count) as count: Sums the token counts for each policy at each time interval.
 
-13. **`| head 10`**:
-    - Retrieves the **top 10** results from the sorted output. This limits the results to the 10 policies with the highest token counts, including the root policy.
+by _time, policy: Groups the results by both time and policy, providing a total token count for each policy at each time point.
 
-14. **`| sort -num_tokens`**:
-    - Sorts the final output again in descending order by **`num_tokens`**. This ensures that the output displays the policies starting from the one with the most tokens down to the one with the least (excluding the root policy from this sort).
+| eventstats latest(_time) as latesttime:
 
-15. **`| fields - num_tokens is_root`**:
-    - This command removes the **`num_tokens`** and **`is_root`** fields from the final output, resulting in a cleaner display. Only the remaining fields (presumably **`policy`** and **`count`**) will be shown.
+eventstats: Computes statistics across events and adds them to the original events.
 
-### Example Output:
+latest(_time) as latesttime: Finds the latest time across all the results and stores it as latesttime for later filtering.
+
+| where _time == latesttime:
+
+Filters the results to only include the entries where the time matches the latest time found in the previous step. This ensures that only the most recent token counts for each policy are retained.
+
+| append [makeresults 1 | eval policy="root", count=0]:
+
+append: Combines additional results with the current results.
+
+[makeresults 1 | eval policy="root", count=0]: Creates a new event with a policy labeled as "root" and a count of 0. This ensures that the root policy is included in the results, even if it has no tokens.
+
+| stats max(count) as num_tokens by policy:
+
+stats: Aggregates the data again.
+
+max(count) as num_tokens: Takes the maximum token count for each policy and renames it to num_tokens.
+
+| eval root_count=if(policy=="root", num_tokens, 0):
+
+This line creates a new field called root_count. If the policy is "root", it assigns the num_tokens value; otherwise, it assigns 0.
+
+| eval count=if(policy=="root", 0, num_tokens):
+
+Creates a new field called count. If the policy is "root", it assigns 0 to count; otherwise, it assigns the value of num_tokens.
+
+| eval is_root=if(policy=="root", 1, 0):
+
+Creates a new field called is_root. If the policy is "root", it assigns 1; otherwise, it assigns 0. This field is used for sorting later.
+
+| sort -is_root, -num_tokens:
+
+sort: Sorts the results.
+
+-is_root: Sorts in descending order by is_root so that the root policy appears first.
+
+-num_tokens: Sorts in descending order by num_tokens within each group, meaning policies with more tokens will appear before those with fewer tokens.
+
+| head 10:
+
+Retrieves the top 10 results from the sorted output. This limits the results to the 10 policies with the highest token counts, including the root policy.
+
+| sort -num_tokens:
+
+Sorts the final output again in descending order by num_tokens. This ensures that the output displays the policies starting from the one with the most tokens down to the one with the least (excluding the root policy from this sort).
+
+| fields - num_tokens is_root:
+
+This command removes the num_tokens and is_root fields from the final output, resulting in a cleaner display. Only the remaining fields (presumably policy and count) will be shown.
+
 The output will display the latest token counts associated with different policies in the Vault environment. The root policy will always be included, even if it has a count of zero, ensuring that all relevant policies are accounted for.
 
-| policy   | count |
-|----------|-------|
-| policy_1 | 100   |
-| policy_2 | 80    |
-| root     | 0     |
-| policy_3 | 30    |
-| policy_4 | 20    |
-| policy_5 | 15    |
-| policy_6 | 10    |
-| policy_7 | 5     |
-| policy_8 | 3     |
-| policy_9 | 1     |
+Result:
 
-### Summary:
-This query provides insights into the **latest token counts** for various policies in a Vault environment, ensuring the root policy is included. It retrieves the latest metrics, aggregates and sorts them, and presents the top results, making it easy to understand which policies are actively issuing tokens and their respective counts.
-=================================================================================================================================================================================================================================================================================================================
-###8.Kv secrets:
-| mstats latest(vault.secret.kv.count.value) AS count WHERE `vault_telemetry` AND cluster=$cluster$ BY mount_point span=10m
+Open image-20241008-070538.png
+image-20241008-070538.png
+Visual Representation:
+
+Open image-20241008-070645.png
+image-20241008-070645.png
+ 
+
+KV secrets:
+
+
+
+| mstats latest(vault.secret.kv.count.value) AS count WHERE vault_telemetry AND cluster=$cluster$ BY mount_point span=10m
 | eval namespace=if(namespace=="root","",namespace)
 | strcat namespace "/" mount_point path
 | timechart bins=1000 max(count) as count by path
 | addtotals row=true
+Explanation:
 
-This query is designed to track and display the number of Key-Value (KV) secrets stored in Vault, aggregated by the `mount_point` (which is where secrets are stored) over time. Here's a breakdown of each part:
+This query is designed to track and display the number of Key-Value (KV) secrets stored in Vault, aggregated by the mount_point (which is where secrets are stored) over time. Here's a breakdown of each part:
 
-### Query Breakdown:
+Retrieve KV Secrets Count:
 
-1. **Retrieve KV Secrets Count**:
-   - `| mstats latest(vault.secret.kv.count.value) AS count WHERE vault_telemetry AND cluster=$cluster$ BY mount_point span=10m`
-   - This retrieves the latest number of KV secrets (`vault.secret.kv.count.value`) within the specified cluster and groups them by `mount_point`. The data is taken in 10-minute intervals (`span=10m`).
+| mstats latest(vault.secret.kv.count.value) AS count WHERE vault_telemetry AND cluster=$cluster$ BY mount_point span=10m
 
-2. **Handle Namespace Field**:
-   - `| eval namespace=if(namespace=="root","",namespace)`
-   - This checks if the `namespace` is `"root"`. If so, it replaces `"root"` with an empty string (`""`), otherwise, it leaves the `namespace` unchanged. This is done to simplify or clean up the namespace field in cases where `"root"` is the default or primary namespace.
+This retrieves the latest number of KV secrets (vault.secret.kv.count.value) within the specified cluster and groups them by mount_point. The data is taken in 10-minute intervals (span=10m).
 
-3. **Construct Full Path**:
-   - `| strcat namespace "/" mount_point path`
-   - This concatenates the `namespace` and `mount_point` fields with a `/` separator to create a full `path`. This makes it easier to identify where the secrets are located.
+Handle Namespace Field:
 
-4. **Timechart of Secrets Count**:
-   - `| timechart bins=1000 max(count) as count by path`
-   - This creates a time chart, where the maximum number of KV secrets (`count`) is plotted for each `path` (namespace and mount point). The `bins=1000` ensures up to 1000 time intervals (or data points) are created for detailed granularity over time.
+| eval namespace=if(namespace=="root","",namespace)
 
-5. **Add Total Row**:
-   - `| addtotals row=true`
-   - This adds a total count row at the bottom of the results, summing up the secrets across all mount points.
+This checks if the namespace is "root". If so, it replaces "root" with an empty string (""), otherwise, it leaves the namespace unchanged. This is done to simplify or clean up the namespace field in cases where "root" is the default or primary namespace.
 
-### Result:
-The query gives you a time series chart showing how the number of KV secrets changes over time, grouped by each `path` (namespace + mount point), with a total count of secrets shown at the end.
-=================================================================================================================================
+Construct Full Path:
 
-###9.Leases created by secret Engines
-| mstats sum(vault.secret.lease.creation.value) AS leases WHERE `vault_telemetry` AND cluster=$cluster$ BY mount_point span=10m
+| strcat namespace "/" mount_point path
+
+This concatenates the namespace and mount_point fields with a / separator to create a full path. This makes it easier to identify where the secrets are located.
+
+Timechart of Secrets Count:
+
+| timechart bins=1000 max(count) as count by path
+
+This creates a time chart, where the maximum number of KV secrets (count) is plotted for each path (namespace and mount point). The bins=1000 ensures up to 1000 time intervals (or data points) are created for detailed granularity over time.
+
+Add Total Row:
+
+| addtotals row=true
+
+This adds a total count row at the bottom of the results, summing up the secrets across all mount points.
+
+Result:
+
+The query gives you a time series chart showing how the number of KV secrets changes over time, grouped by each path (namespace + mount point), with a total count of secrets shown at the end.
+
+Open image-20241008-070838.png
+image-20241008-070838.png
+Visual Representation:
+
+ 
+
+Open image-20241008-070925.png
+image-20241008-070925.png
+ 
+
+Leases created by secret Engines
+
+
+
+Ex| mstats sum(vault.secret.lease.creation.value) AS leases WHERE vault_telemetry AND cluster=$cluster$ BY mount_point span=10m
 | eval namespace=if(namespace=="root","",namespace)
 | strcat namespace "/" mount_point path
 | timechart bins=1000 sum(leases) by path
 | addtotals row=true
+Explanation:
 
 This query is designed to monitor the number of leases created by secret engines in HashiCorp Vault over time. Leases are temporary credentials or tokens granted for accessing secrets. Here’s a detailed breakdown of each part of the query:
 
-### Query Breakdown:
+Retrieve Lease Creation Count:
 
-1. **Retrieve Lease Creation Count**:
-   - `| mstats sum(vault.secret.lease.creation.value) AS leases WHERE vault_telemetry AND cluster=$cluster$ BY mount_point span=10m`
-   - This part aggregates the total number of leases created (`vault.secret.lease.creation.value`) for each `mount_point`. The data is grouped by `mount_point` and collected in 10-minute intervals (`span=10m`) within the specified cluster (`$cluster$`).
+| mstats sum(vault.secret.lease.creation.value) AS leases WHERE vault_telemetry AND cluster=$cluster$ BY mount_point span=10m
 
-2. **Handle Namespace Field**:
-   - `| eval namespace=if(namespace=="root","",namespace)`
-   - This checks the `namespace` field to see if its value is `"root"`. If it is, the query replaces `"root"` with an empty string (`""`). This simplifies the namespace for better clarity in the final output.
+This part aggregates the total number of leases created (vault.secret.lease.creation.value) for each mount_point. The data is grouped by mount_point and collected in 10-minute intervals (span=10m) within the specified cluster ($cluster$).
 
-3. **Construct Full Path**:
-   - `| strcat namespace "/" mount_point path`
-   - This combines the `namespace` and `mount_point` into a single field called `path`, with a `/` separator. This provides a clear indication of where each lease was created.
+Handle Namespace Field:
 
-4. **Timechart of Lease Count**:
-   - `| timechart bins=1000 sum(leases) by path`
-   - This creates a time series chart that sums the total leases (`leases`) created for each `path` (which includes the namespace and mount point). The `bins=1000` parameter allows for up to 1000 time intervals, providing a detailed view over time.
+| eval namespace=if(namespace=="root","",namespace)
 
-5. **Add Total Row**:
-   - `| addtotals row=true`
-   - This adds a row at the bottom of the results that sums up the total number of leases created across all mount points. It gives a quick overview of the overall lease creation activity.
+This checks the namespace field to see if its value is "root". If it is, the query replaces "root" with an empty string (""). This simplifies the namespace for better clarity in the final output.
 
-### Result:
+Construct Full Path:
+
+| strcat namespace "/" mount_point path
+
+This combines the namespace and mount_point into a single field called path, with a / separator. This provides a clear indication of where each lease was created.
+
+Timechart of Lease Count:
+
+| timechart bins=1000 sum(leases) by path
+
+This creates a time series chart that sums the total leases (leases) created for each path (which includes the namespace and mount point). The bins=1000 parameter allows for up to 1000 time intervals, providing a detailed view over time.
+
+Add Total Row:
+
+| addtotals row=true
+
+This adds a row at the bottom of the results that sums up the total number of leases created across all mount points. It gives a quick overview of the overall lease creation activity.
+
+Result:
+
 The output of this query provides a time series view of how many leases are being created by different secret engines in Vault, grouped by their paths. It also includes a total count at the end, helping administrators track and monitor lease usage over time.
 
----
+Open image-20241008-071128.png
+image-20241008-071128.png
+ 
 
-“Monitoring lease creation is like keeping an eye on a valuable resource; the more you understand its usage, the better you can manage it.”
-============================================================================================================================================================================================================================================================
+Visual Representation:
 
-###10.K/V reads and lists by path
-sourcetype="hashicorp_vault_audit_log" index="vault-audit" mount_type :"kv" (operation :"list" OR operation :"read") host="cloud-infra-vault-prd-*" | timechart bins=1000 count by request.operation
+Open image-20241008-071234.png
+image-20241008-071234.png
+ 
 
-This query is designed to analyze and visualize the read and list operations performed on Key-Value (K/V) secrets in HashiCorp Vault by examining the audit logs. Here’s a detailed breakdown of each component of the query:
+K/V reads and lists by path
 
-### Query Breakdown:
 
-1. **Source Specification**:
-   - `sourcetype="hashicorp_vault_audit_log"`: This specifies that the query is looking for logs that are of the type `hashicorp_vault_audit_log`. This sourcetype contains audit logs generated by Vault that record operations performed on secrets and other resources.
 
-2. **Index Selection**:
-   - `index="vault-audit"`: This indicates that the query should search within the `vault-audit` index. This index typically contains logs related to Vault operations, including authentication attempts, secret accesses, and other relevant activities.
+sourcetype="hashicorp_vault_audit_log" index="vault-audit" mount_type :"kv" (operation :"list" OR operation :"read") host="cloud-infra-vault-prd-*" 
+| timechart bins=1000 count by request.operation
+Explanation: 
 
-3. **Mount Type Filtering**:
-   - `mount_type :"kv"`: This filters the results to only include operations performed on K/V secrets. The `mount_type` is used to specify that only those logs related to K/V secrets should be considered, excluding other types of secret engines.
+This query is designed to analyse and visualize the read and list operations performed on Key-Value (K/V) secrets in HashiCorp Vault by examining the audit logs. Here’s a detailed breakdown of each component of the query:
 
-4. **Operation Type Filtering**:
-   - `(operation :"list" OR operation :"read")`: This condition specifies that only logs where the `operation` is either `"list"` or `"read"` should be included. 
-     - **List Operation**: This refers to actions that retrieve a list of keys stored at a specific path in the K/V secret engine.
-     - **Read Operation**: This refers to actions that retrieve the value of a specific key from the K/V store.
+Source Specification:
 
-5. **Host Filtering**:
-   - `host="cloud-infra-vault-prd-*"`: This limits the results to those originating from hosts whose names match the specified pattern (i.e., starting with `cloud-infra-vault-prd-`). This is useful for focusing on a specific Vault instance or set of instances in a production environment.
+sourcetype="hashicorp_vault_audit_log": This specifies that the query is looking for logs that are of the type hashicorp_vault_audit_log. This sourcetype contains audit logs generated by Vault that record operations performed on secrets and other resources.
 
-6. **Timechart Visualization**:
-   - `| timechart bins=1000 count by request.operation`: This part of the query generates a time chart visualization.
-     - **Timechart**: This function aggregates the results over time, allowing for visual representation of the data.
-     - **bins=1000**: This sets the maximum number of time intervals (bins) to 1000, providing a detailed time series.
-     - **count**: This counts the number of occurrences of each operation.
-     - **by request.operation**: This separates the counts into different lines on the timechart for each type of operation (i.e., "read" and "list").
+Index Selection:
 
-### Result:
-The output of this query will be a time-based visualization that shows how many K/V `read` and `list` operations are being performed over time. Each operation type will have its own line in the chart, allowing you to compare their frequencies visually.
+index="vault-audit": This indicates that the query should search within the vault-audit index. This index typically contains logs related to Vault operations, including authentication attempts, secret accesses, and other relevant activities.
 
-### Potential Insights:
-1. **Operational Activity**: This visualization helps identify periods of high activity concerning K/V secrets, which may indicate spikes in application usage or changes in operational practices.
-  
-2. **Anomaly Detection**: Sudden changes in the frequency of `read` or `list` operations could signal potential issues or unauthorized access attempts, prompting further investigation.
+Mount Type Filtering:
 
-3. **Performance Monitoring**: Understanding the load on the K/V secret engine from these operations can inform capacity planning and optimization efforts for Vault deployments.
+mount_type :"kv": This filters the results to only include operations performed on K/V secrets. The mount_type is used to specify that only those logs related to K/V secrets should be considered, excluding other types of secret engines.
 
-### Example Use Case:
-For instance, if you are monitoring an application that retrieves configuration secrets stored in Vault, observing high `read` operations during application deployment windows could indicate the application is frequently accessing necessary secrets. Conversely, a significant increase in `list` operations may suggest that an administrator is performing maintenance or audits on the secrets.
+Operation Type Filtering:
 
-This data provides valuable insights into how secrets are accessed and managed, aiding in security assessments and performance optimizations.
+(operation :"list" OR operation :"read"): This condition specifies that only logs where the operation is either "list" or "read" should be included. 
 
-===========================================================================================================================================================================================================================================================================================================
+List Operation: This refers to actions that retrieve a list of keys stored at a specific path in the K/V secret engine.
 
-##Vault Requests
+Read Operation: This refers to actions that retrieve the value of a specific key from the K/V store.
 
-###11.Requests by operation
-sourcetype="hashicorp_vault_audit_log" index="vault-audit" | spath type | search type=request| spath "request.operation" | stats count by request.operation
+Host Filtering:
 
-This query is designed to analyze and count the different types of operations (requests) made to HashiCorp Vault as recorded in its audit logs. Here’s a detailed breakdown of each component of the query:
+host="cloud-infra-vault-prd-*": This limits the results to those originating from hosts whose names match the specified pattern (i.e., starting with cloud-infra-vault-prd-). This is useful for focusing on a specific Vault instance or set of instances in a production environment.
 
-### Query Breakdown:
+Timechart Visualization:
 
-1. **Source Specification**:
-   - `sourcetype="hashicorp_vault_audit_log"`: This specifies that the query is looking for logs that are of the type `hashicorp_vault_audit_log`. These logs contain records of operations performed on secrets and other resources in Vault.
+| timechart bins=1000 count by request.operation: This part of the query generates a time chart visualization.
 
-2. **Index Selection**:
-   - `index="vault-audit"`: This indicates that the query should search within the `vault-audit` index. This index typically contains logs related to various Vault operations, including authentication attempts, secret accesses, and administrative actions.
+Timechart: This function aggregates the results over time, allowing for visual representation of the data.
 
-3. **Extracting JSON Fields**:
-   - `| spath type`: The `spath` command is used to extract fields from the structured JSON data in the audit logs. In this case, it extracts the `type` field from the log entries.
-   
-4. **Filtering for Request Type**:
-   - `| search type=request`: This filters the results to include only those entries where the `type` is equal to `request`. This means the query is focusing solely on requests made to Vault, excluding other types of log entries (like responses, errors, etc.).
+bins=1000: This sets the maximum number of time intervals (bins) to 1000, providing a detailed time series.
 
-5. **Extracting Operation Details**:
-   - `| spath "request.operation"`: This command extracts the `operation` field from the `request` object in the log entries. This field typically indicates what type of operation was performed (e.g., `read`, `write`, `delete`, etc.).
+count: This counts the number of occurrences of each operation.
 
-6. **Counting Operations**:
-   - `| stats count by request.operation`: This part of the query counts the number of occurrences of each operation type extracted from the previous step. It groups the counts by the `request.operation`, providing a tally of how many times each operation has been requested in the logs.
+by request.operation: This separates the counts into different lines on the timechart for each type of operation (i.e., "read" and "list")
 
-### Result:
+Result:
+
+The output of this query will be a time-based visualization that shows how many K/V read and list operations are being performed over time. Each operation type will have its own line in the chart, allowing you to compare their frequencies visually.
+
+Open image-20241008-071431.png
+image-20241008-071431.png
+Visual Representation:
+
+Open image-20241008-071558.png
+image-20241008-071558.png
+ 
+
+Requests by operation
+
+
+
+sourcetype="hashicorp_vault_audit_log" index="vault-audit" 
+| spath type 
+| search type=request
+| spath "request.operation" 
+| stats count by request.operation
+Explanation:
+
+This query is designed to analyse and count the different types of operations (requests) made to HashiCorp Vault as recorded in its audit logs. Here’s a detailed breakdown of each component of the query.
+
+Source Specification:
+
+sourcetype="hashicorp_vault_audit_log": This specifies that the query is looking for logs that are of the type hashicorp_vault_audit_log. These logs contain records of operations performed on secrets and other resources in Vault.
+
+Index Selection:
+
+index="vault-audit": This indicates that the query should search within the vault-audit index. This index typically contains logs related to various Vault operations, including authentication attempts, secret accesses, and administrative actions.
+
+Extracting JSON Fields:
+
+| spath type: The spath command is used to extract fields from the structured JSON data in the audit logs. In this case, it extracts the type field from the log entries.
+
+Filtering for Request Type:
+
+| search type=request: This filters the results to include only those entries where the type is equal to request. This means the query is focusing solely on requests made to Vault, excluding other types of log entries (like responses, errors, etc.).
+
+Extracting Operation Details:
+
+| spath "request.operation": This command extracts the operation field from the request object in the log entries. This field typically indicates what type of operation was performed (e.g., read, write, delete, etc.).
+
+Counting Operations:
+
+| stats count by request.operation: This part of the query counts the number of occurrences of each operation type extracted from the previous step. It groups the counts by the request.operation, providing a tally of how many times each operation has been requested in the logs.
+
+Result:
 The output of this query will be a table that lists each type of operation along with the count of how many times that operation has been requested. For example, you might see results like this:
 
-| request.operation | count |
-|-------------------|-------|
-| read              | 1500  |
-| write             | 800   |
-| delete            | 300   |
+ 
 
-### Potential Insights:
-1. **Operation Frequency**: This data can provide insights into which operations are most frequently performed in your Vault environment. For example, a high count of `read` operations could indicate that applications are frequently accessing secrets.
+Open image-20241008-071752.png
+image-20241008-071752.png
+Visual Representation:
 
-2. **Performance Monitoring**: Understanding the volume of requests can help in monitoring performance and identifying potential bottlenecks in the Vault service. If `write` operations are particularly high, it may be worthwhile to assess how frequently applications are updating secrets.
+Open image-20241008-071838.png
+image-20241008-071838.png
+ 
 
-3. **Security Auditing**: Anomalies in operation counts (e.g., a sudden spike in `delete` requests) could prompt a security review to ensure there are no unauthorized actions occurring.
+Requests by Role name
 
-### Example Use Case:
-For instance, if your organization has multiple applications that interact with Vault, this query can help you assess which applications are making the most requests and what types of operations they are performing. This information can be crucial for capacity planning, performance tuning, and ensuring compliance with security policies. 
 
-Overall, this query provides a high-level overview of request activity within your Vault environment, aiding in operational awareness and strategic decision-making.
 
-=====================================================================================================================================================================================
+sourcetype="hashicorp_vault_audit_log" index="vault-audit" 
+| spath type 
+| search type=response
+| spath "auth.metadata.role_name" 
+| stats count by auth.metadata.role_name 
+| sort - count 
+| head 10
+Explanation:
 
-###12.Requests by Role name
-sourcetype="hashicorp_vault_audit_log" index="vault-audit" | spath type | search type=response| spath "auth.metadata.role_name" | stats count by auth.metadata.role_name | sort - count | head 10
-This query is designed to analyze and count the number of requests made to HashiCorp Vault based on the role names used in authentication. It provides insights into which roles are most frequently involved in operations. Here’s a detailed breakdown of each component of the query:
+This query is designed to analyse and count the number of requests made to HashiCorp Vault based on the role names used in authentication. It provides insights into which roles are most frequently involved in operations. Here’s a detailed breakdown of each component of the query:
 
-### Query Breakdown:
+Source Specification:
 
-1. **Source Specification**:
-   - `sourcetype="hashicorp_vault_audit_log"`: This specifies that the query is looking for logs of the type `hashicorp_vault_audit_log`, which contain records of operations performed on secrets and other resources in Vault.
+sourcetype="hashicorp_vault_audit_log": This specifies that the query is looking for logs of the type hashicorp_vault_audit_log, which contain records of operations performed on secrets and other resources in Vault.
 
-2. **Index Selection**:
-   - `index="vault-audit"`: This indicates that the query should search within the `vault-audit` index. This index typically contains logs related to various Vault operations, including authentication attempts, secret accesses, and administrative actions.
+Index Selection:
 
-3. **Extracting JSON Fields**:
-   - `| spath type`: The `spath` command is used to extract fields from the structured JSON data in the audit logs. In this case, it extracts the `type` field from the log entries.
+index="vault-audit": This indicates that the query should search within the vault-audit index. This index typically contains logs related to various Vault operations, including authentication attempts, secret accesses, and administrative actions.
 
-4. **Filtering for Response Type**:
-   - `| search type=response`: This filters the results to include only those entries where the `type` is equal to `response`. This means the query is focusing on logs that represent responses to requests made to Vault, particularly those that include information about the authentication process.
+Extracting JSON Fields:
 
-5. **Extracting Role Name**:
-   - `| spath "auth.metadata.role_name"`: This command extracts the `role_name` field from the `auth.metadata` object in the log entries. This field typically indicates the name of the role used for authentication (e.g., `my-role`, `admin`, etc.).
+| spath type: The spath command is used to extract fields from the structured JSON data in the audit logs. In this case, it extracts the type field from the log entries.
 
-6. **Counting Role Requests**:
-   - `| stats count by auth.metadata.role_name`: This part of the query counts the number of occurrences of each role name extracted from the previous step. It groups the counts by the `role_name`, providing a tally of how many times each role was used in authentication.
+Filtering for Response Type:
 
-7. **Sorting the Results**:
-   - `| sort - count`: This sorts the results in descending order based on the count of occurrences. The most frequently used roles will appear at the top of the list.
+| search type=response: This filters the results to include only those entries where the type is equal to response. This means the query is focusing on logs that represent responses to requests made to Vault, particularly those that include information about the authentication process.
 
-8. **Limiting Results**:
-   - `| head 10`: This limits the final output to the top 10 role names based on their counts. Only the roles that were used the most frequently will be displayed.
+Extracting Role Name:
 
-### Result:
+| spath "auth.metadata.role_name": This command extracts the role_name field from the auth.metadata object in the log entries. This field typically indicates the name of the role used for authentication (e.g., my-role, admin, etc.).
+
+Counting Role Requests:
+
+| stats count by auth.metadata.role_name: This part of the query counts the number of occurrences of each role name extracted from the previous step. It groups the counts by the role_name, providing a tally of how many times each role was used in authentication.
+
+Sorting the Results:
+
+| sort - count: This sorts the results in descending order based on the count of occurrences. The most frequently used roles will appear at the top of the list.
+
+Limiting Results:
+
+| head 10: This limits the final output to the top 10 role names based on their counts. Only the roles that were used the most frequently will be displayed.
+
+Result:
 The output of this query will be a table that lists the top 10 role names along with the count of how many times each role was used in authentication requests. For example, you might see results like this:
 
-| auth.metadata.role_name | count |
-|--------------------------|-------|
-| admin                    | 250   |
-| developer                | 180   |
-| read-only                | 150   |
-| service-account          | 120   |
-| ...                      | ...   |
+Open image-20241008-072031.png
+image-20241008-072031.png
+Visual Representation:
 
-### Potential Insights:
-1. **Role Usage**: This data can provide insights into which roles are being utilized most frequently in your Vault environment. Understanding role usage can help in evaluating the effectiveness and need for each role.
+Open image-20241008-072122.png
+image-20241008-072122.png
+Requests handle time
 
-2. **Security Review**: Analyzing role usage can also assist in identifying potential security issues. For example, if a role that should have limited access is used frequently, it might warrant further investigation.
 
-3. **Access Patterns**: Knowing which roles are most commonly used can inform decisions on resource allocation, role management, and potentially necessary adjustments to role permissions.
 
-### Example Use Case:
-For instance, if your organization has different roles for various teams (e.g., `admin`, `developer`, `read-only`), this query can help you assess the activity of each role. If you find that the `admin` role is being used significantly more than others, you might want to review its permissions or consider splitting its responsibilities into more specialized roles to adhere to the principle of least privilege.
-
-Overall, this query provides valuable insights into the authentication landscape within your Vault environment, aiding in operational monitoring, security audits, and role management.
-
-====================================================================================================================================================================================================
-
-###13.Requests handle time
 | mstats mean(vault.core.handle_request.mean) as latency where `vault_telemetry` AND cluster=$cluster$ span=1m
 | timechart bins=1000 mean(latency) as latency
 | eventstats perc90(latency) perc50(latency) | eval critical=20.0
+Explanation:
 
-The query analyzes the average latency (handle request time) of operations in HashiCorp Vault over time, providing insights into performance and responsiveness. Here's a detailed breakdown of each component of the query:
+The query analyses the average latency (handle request time) of operations in HashiCorp Vault over time, providing insights into performance and responsiveness. Here's a detailed breakdown of each component of the query:
 
-### Query Breakdown
+Mean Latency Calculation:
 
-1. **Mean Latency Calculation**:
-   - **`| mstats mean(vault.core.handle_request.mean) as latency where vault_telemetry AND cluster=$cluster$ span=1m`**:
-     - **`mstats`**: This command aggregates metrics from the Vault telemetry data.
-     - **`mean(vault.core.handle_request.mean)`**: This function calculates the average time taken to handle requests in Vault. It refers to the metric that tracks the mean request handling time.
-     - **`where vault_telemetry AND cluster=$cluster$`**: This filters the metrics to include only those from the specified telemetry source (`vault_telemetry`) and a specific cluster (indicated by `$cluster$`).
-     - **`span=1m`**: This aggregates the data over 1-minute intervals, providing a smoother view of latency trends over time.
+| mstats mean(vault.core.handle_request.mean) as latency where vault_telemetry AND cluster=$cluster$ span=1m:
 
-2. **Timechart Visualization**:
-   - **`| timechart bins=1000 mean(latency) as latency`**:
-     - **`timechart`**: This command creates a time series chart based on the aggregated mean latency data.
-     - **`bins=1000`**: This specifies that the timechart should use a maximum of 1000 data points (or bins) for the visualization. It allows for a detailed representation of the data over time.
-     - **`mean(latency) as latency`**: This indicates that the chart should display the mean latency calculated earlier.
+mstats: This command aggregates metrics from the Vault telemetry data.
 
-3. **Statistical Analysis**:
-   - **`| eventstats perc90(latency) perc50(latency)`**:
-     - **`eventstats`**: This command calculates additional statistics (percentiles) based on the mean latency values from the timechart.
-     - **`perc90(latency)`**: This computes the 90th percentile of latency, which is useful for understanding the upper limit of latency experienced by most users.
-     - **`perc50(latency)`**: This calculates the median (50th percentile) latency, representing the midpoint of latency values.
+mean(vault.core.handle_request.mean): This function calculates the average time taken to handle requests in Vault. It refers to the metric that tracks the mean request handling time.
 
-4. **Critical Threshold Evaluation**:
-   - **`| eval critical=20.0`**:
-     - This creates a new field called `critical` and assigns it a constant value of `20.0`.
-     - This value can serve as a threshold for assessing latency performance. If the mean latency exceeds this value, it might indicate a potential issue that requires attention.
+where vault_telemetry AND cluster=$cluster$: This filters the metrics to include only those from the specified telemetry source (vault_telemetry) and a specific cluster (indicated by $cluster$).
 
-### Result
+span=1m: This aggregates the data over 1-minute intervals, providing a smoother view of latency trends over time.
+
+Timechart Visualization:
+
+| timechart bins=1000 mean(latency) as latency:
+
+timechart: This command creates a time series chart based on the aggregated mean latency data.
+
+bins=1000: This specifies that the timechart should use a maximum of 1000 data points (or bins) for the visualization. It allows for a detailed representation of the data over time.
+
+mean(latency) as latency: This indicates that the chart should display the mean latency calculated earlier.
+
+Statistical Analysis:
+
+| eventstats perc90(latency) perc50(latency):
+
+eventstats: This command calculates additional statistics (percentiles) based on the mean latency values from the timechart.
+
+perc90(latency): This computes the 90th percentile of latency, which is useful for understanding the upper limit of latency experienced by most users.
+
+perc50(latency): This calculates the median (50th percentile) latency, representing the midpoint of latency values.
+
+Critical Threshold Evaluation:
+
+| eval critical=20.0:
+
+This creates a new field called critical and assigns it a constant value of 20.0.
+
+This value can serve as a threshold for assessing latency performance. If the mean latency exceeds this value, it might indicate a potential issue that requires attention.
+
+Result:
+
 The output of this query will yield a time series visualization showing the average latency of requests handled by Vault over time, along with additional metrics indicating the 90th and 50th percentiles of latency. 
 
-### Potential Insights
-1. **Performance Monitoring**: The average latency data helps you monitor how quickly Vault is responding to requests over time. A consistent increase in latency might indicate performance bottlenecks or issues that need to be investigated.
+Open image-20241008-072304.png
+image-20241008-072304.png
+Visual Representation:
 
-2. **Benchmarking**: By comparing the average latency against the defined critical threshold, you can assess whether the latency is within acceptable limits. If the mean latency regularly exceeds the threshold of `20.0`, further investigation may be warranted.
+Open image-20241008-072353.png
+image-20241008-072353.png
+Login Requests handle time
 
-3. **User Experience**: Latency directly affects user experience, especially for applications relying on Vault for secret management. Monitoring latency can help ensure that users experience minimal delays.
 
-### Example Use Case
-If you notice that the mean latency spikes during specific times (e.g., peak hours), you may want to analyze the underlying infrastructure, such as server load or resource allocation, to determine if you need to optimize performance or increase capacity.
 
-Overall, this query provides valuable insights into the request handling time of your Vault environment, aiding in performance optimization and operational monitoring.
-==========================================================================================================================================================================
-
-###14.Login Requests handle time
-| mstats mean(vault.core.handle_login_request.mean) as latency where `vault_telemetry` AND cluster=$cluster$ span=1m
+| mstats mean(vault.core.handle_login_request.mean) as latency where vault_telemetry AND cluster=$cluster$ span=1m
 | timechart bins=1000 mean(latency) as latency
 | eventstats perc90(latency) perc50(latency)
+Explanation: 
 
-This query analyzes the average latency (handle login request time) for login requests in HashiCorp Vault over time, allowing for performance assessment related to user authentication processes. Here’s a detailed breakdown of each part of the query:
+This query analyses the average latency (handle login request time) for login requests in HashiCorp Vault over time, allowing for performance assessment related to user authentication processes. Here’s a detailed breakdown of each part of the query:
 
-### Query Breakdown
+Mean Latency Calculation for Login Requests:
 
-1. **Mean Latency Calculation for Login Requests**:
-   - **`| mstats mean(vault.core.handle_login_request.mean) as latency where vault_telemetry AND cluster=$cluster$ span=1m`**:
-     - **`mstats`**: This command aggregates metrics from the Vault telemetry data.
-     - **`mean(vault.core.handle_login_request.mean)`**: This function calculates the average time taken to handle login requests in Vault. It refers specifically to the metric that tracks the mean request handling time for login operations.
-     - **`where vault_telemetry AND cluster=$cluster$`**: This filters the metrics to include only those from the specified telemetry source (`vault_telemetry`) and a specific cluster (indicated by `$cluster$`).
-     - **`span=1m`**: This aggregates the data over 1-minute intervals, allowing for a more granular view of login request latency trends over time.
+| mstats mean(vault.core.handle_login_request.mean) as latency where vault_telemetry AND cluster=$cluster$ span=1m:
 
-2. **Timechart Visualization**:
-   - **`| timechart bins=1000 mean(latency) as latency`**:
-     - **`timechart`**: This command creates a time series chart based on the aggregated mean latency data for login requests.
-     - **`bins=1000`**: This specifies that the timechart should use a maximum of 1000 data points (or bins) for the visualization. This setting allows for a detailed representation of the login request latency data over time.
-     - **`mean(latency) as latency`**: This indicates that the chart should display the mean latency calculated earlier, effectively showing how the average login request latency changes over time.
+mstats: This command aggregates metrics from the Vault telemetry data.
 
-3. **Statistical Analysis**:
-   - **`| eventstats perc90(latency) perc50(latency)`**:
-     - **`eventstats`**: This command calculates additional statistics (percentiles) based on the mean latency values from the timechart.
-     - **`perc90(latency)`**: This computes the 90th percentile of latency for login requests, providing insight into the upper limit of latency experienced by the majority of users. This metric can help identify performance issues affecting a small but significant number of requests.
-     - **`perc50(latency)`**: This calculates the median (50th percentile) latency, representing the midpoint of login request latency values. This metric provides a general understanding of typical user experiences with login times.
+mean(vault.core.handle_login_request.mean): This function calculates the average time taken to handle login requests in Vault. It refers specifically to the metric that tracks the mean request handling time for login operations.
 
-### Result
+where vault_telemetry AND cluster=$cluster$: This filters the metrics to include only those from the specified telemetry source (vault_telemetry) and a specific cluster (indicated by $cluster$).
+
+span=1m: This aggregates the data over 1-minute intervals, allowing for a more granular view of login request latency trends over time.
+
+Timechart Visualization:
+
+| timechart bins=1000 mean(latency) as latency:
+
+timechart: This command creates a time series chart based on the aggregated mean latency data for login requests.
+
+bins=1000: This specifies that the timechart should use a maximum of 1000 data points (or bins) for the visualization. This setting allows for a detailed representation of the login request latency data over time.
+
+mean(latency) as latency: This indicates that the chart should display the mean latency calculated earlier, effectively showing how the average login request latency changes over time.
+
+Statistical Analysis:
+
+| eventstats perc90(latency) perc50(latency):
+
+eventstats: This command calculates additional statistics (percentiles) based on the mean latency values from the timechart.
+
+perc90(latency): This computes the 90th percentile of latency for login requests, providing insight into the upper limit of latency experienced by the majority of users. This metric can help identify performance issues affecting a small but significant number of requests.
+
+perc50(latency): This calculates the median (50th percentile) latency, representing the midpoint of login request latency values. This metric provides a general understanding of typical user experiences with login times.
+
+Result:
+
 The output of this query will yield a time series visualization showing the average latency of login requests handled by Vault over time, along with additional metrics indicating the 90th and 50th percentiles of latency.
 
-### Potential Insights
-1. **User Authentication Performance**: Monitoring the average latency of login requests is crucial for understanding the efficiency of user authentication processes. High latency may indicate bottlenecks that can frustrate users attempting to log in.
+Open image-20241008-072621.png
+image-20241008-072621.png
+Visual Representation:
 
-2. **Threshold Analysis**: By observing the 90th percentile, you can assess whether any users experience significantly longer login times than average. This can guide performance optimization efforts and help you identify areas for improvement.
+Open image-20241008-072519.png
+image-20241008-072519.png
+ 
 
-3. **Operational Monitoring**: Tracking the latency over time enables you to detect trends, such as increased login request latency during peak usage hours or after changes in the infrastructure. This information can inform scaling decisions or adjustments to resource allocation.
+Duration of list operation
 
-### Example Use Case
-If you identify that the average login request latency consistently spikes during high-demand periods, you might consider implementing strategies such as load balancing, scaling the authentication service, or optimizing the login process to enhance user experience and reduce wait times.
 
-Overall, this query is essential for monitoring the responsiveness of login requests in your Vault setup, helping ensure that user authentication remains efficient and reliable.
-=====================================================================================================================================================================================================================
 
-###15.Duration of list operation:
 | mstats latest(vault.raft-storage.list.mean) as latency where `vault_telemetry` AND cluster=$cluster$ span=1m
 | timechart bins=1000 mean(latency) as latency
 | eventstats perc90(latency) perc50(latency)
+Explanation:
 
 This query evaluates the duration of the "list" operation within HashiCorp Vault’s Raft storage backend. It specifically tracks the average latency associated with these operations over time, providing insights into the performance and responsiveness of the storage mechanism. Here's a detailed breakdown of the query components:
 
-### Query Breakdown
+Mean Latency Calculation for List Operations:
 
-1. **Mean Latency Calculation for List Operations**:
-   - **`| mstats latest(vault.raft-storage.list.mean) as latency where vault_telemetry AND cluster=$cluster$ span=1m`**:
-     - **`mstats`**: This command aggregates metrics from Vault telemetry data.
-     - **`latest(vault.raft-storage.list.mean)`**: This function retrieves the latest recorded average time taken to execute a "list" operation in the Raft storage backend. The metric reflects the performance of listing operations on the stored data.
-     - **`where vault_telemetry AND cluster=$cluster$`**: This clause filters the metrics to include only those from the specified telemetry source (`vault_telemetry`) and for a specific cluster (indicated by `$cluster$`).
-     - **`span=1m`**: This parameter aggregates the data over 1-minute intervals, allowing for a fine-grained analysis of the latency trends for list operations over time.
+| mstats latest(vault.raft-storage.list.mean) as latency where vault_telemetry AND cluster=$cluster$ span=1m:
 
-2. **Timechart Visualization**:
-   - **`| timechart bins=1000 mean(latency) as latency`**:
-     - **`timechart`**: This command generates a time series chart based on the aggregated mean latency data for list operations.
-     - **`bins=1000`**: This sets the maximum number of data points (or bins) to be represented in the chart, enabling a detailed view of the latency data over the specified timeframe.
-     - **`mean(latency) as latency`**: This indicates that the chart will display the average latency of the list operations, effectively showing how this latency evolves over time.
+mstats: This command aggregates metrics from Vault telemetry data.
 
-3. **Statistical Analysis**:
-   - **`| eventstats perc90(latency) perc50(latency)`**:
-     - **`eventstats`**: This command calculates additional statistics (percentiles) based on the mean latency values from the timechart.
-     - **`perc90(latency)`**: This computes the 90th percentile of latency for the list operations, providing insight into the upper limit of latency experienced by users. It can help identify outlier performance issues affecting a small number of operations.
-     - **`perc50(latency)`**: This calculates the median (50th percentile) latency, which represents the midpoint of the latency values. This metric offers a general understanding of the typical performance users might experience during list operations.
+latest(vault.raft-storage.list.mean): This function retrieves the latest recorded average time taken to execute a "list" operation in the Raft storage backend. The metric reflects the performance of listing operations on the stored data.
 
-### Result
+where vault_telemetry AND cluster=$cluster$: This clause filters the metrics to include only those from the specified telemetry source (vault_telemetry) and for a specific cluster (indicated by $cluster$).
+
+span=1m: This parameter aggregates the data over 1-minute intervals, allowing for a fine-grained analysis of the latency trends for list operations over time.
+
+Timechart Visualization:
+
+| timechart bins=1000 mean(latency) as latency:
+
+timechart: This command generates a time series chart based on the aggregated mean latency data for list operations.
+
+bins=1000: This sets the maximum number of data points (or bins) to be represented in the chart, enabling a detailed view of the latency data over the specified timeframe.
+
+mean(latency) as latency: This indicates that the chart will display the average latency of the list operations, effectively showing how this latency evolves over time.
+
+Statistical Analysis:
+
+| eventstats perc90(latency) perc50(latency):
+
+eventstats: This command calculates additional statistics (percentiles) based on the mean latency values from the timechart.
+
+perc90(latency): This computes the 90th percentile of latency for the list operations, providing insight into the upper limit of latency experienced by users. It can help identify outlier performance issues affecting a small number of operations.
+
+perc50(latency): This calculates the median (50th percentile) latency, which represents the midpoint of the latency values. This metric offers a general understanding of the typical performance users might experience during list operations.
+
+Result:
+
 The output of this query will provide a time series visualization depicting the average latency of list operations handled by the Raft storage backend over time, along with additional metrics indicating the 90th and 50th percentiles of latency.
 
-### Potential Insights
-1. **Storage Operation Performance**: Monitoring the average latency of list operations is crucial for evaluating the performance of the storage layer in Vault. High latency can indicate inefficiencies in data retrieval, affecting overall application performance.
+Open image-20241008-072727.png
+image-20241008-072727.png
+Visual Representation:
 
-2. **Identifying Latency Issues**: By observing the 90th percentile of latency, you can determine whether a subset of list operations experiences significantly longer response times. This information is vital for pinpointing and addressing performance bottlenecks.
+Open image-20241008-072905.png
+image-20241008-072905.png
+ 
 
-3. **Operational Monitoring**: Tracking latency over time allows you to identify trends, such as increased latency during peak usage periods or following infrastructure changes. This information is critical for capacity planning and operational adjustments.
+Duration of Get Operation
 
-### Example Use Case
-If you notice that the average latency for list operations spikes during specific times or operations, you may need to investigate potential causes such as load on the Raft storage backend, configuration issues, or the efficiency of the underlying storage system. This analysis can guide performance optimizations or changes to resource allocation to improve the overall responsiveness of Vault.
 
-Overall, this query serves as a valuable tool for monitoring and analyzing the performance of list operations within the Raft storage backend of HashiCorp Vault, enabling proactive management and optimization of storage performance.
-======================================================================================================================================================================================================================================================
 
-###16.Duration of Get Operation
-| mstats latest(vault.raft-storage.get.mean) as latency where `vault_telemetry` AND cluster=$cluster$ span=1m
+| mstats latest(vault.raft-storage.get.mean) as latency where vault_telemetry AND cluster=$cluster$ span=1m
 | timechart bins=1000 mean(latency) as latency
 | eventstats perc90(latency) perc50(latency)
+Explanation:
 
 This query monitors the duration of "get" operations within HashiCorp Vault’s Raft storage backend, focusing on the average latency of these operations over time. Here’s a detailed breakdown of each component of the query:
 
-### Query Breakdown
+Mean Latency Calculation for Get Operations:
 
-1. **Mean Latency Calculation for Get Operations**:
-   - **`| mstats latest(vault.raft-storage.get.mean) as latency where vault_telemetry AND cluster=$cluster$ span=1m`**:
-     - **`mstats`**: This command aggregates metrics from the Vault telemetry data.
-     - **`latest(vault.raft-storage.get.mean)`**: This function retrieves the most recent average latency recorded for "get" operations in the Raft storage backend. This metric reflects how long it typically takes to retrieve data from the storage.
-     - **`where vault_telemetry AND cluster=$cluster$`**: This clause filters the metrics to include only those from the specified telemetry source (`vault_telemetry`) and for a particular cluster (indicated by `$cluster$`).
-     - **`span=1m`**: This parameter aggregates the data over 1-minute intervals, allowing for a detailed analysis of latency trends for get operations.
+| mstats latest(vault.raft-storage.get.mean) as latency where vault_telemetry AND cluster=$cluster$ span=1m:
 
-2. **Timechart Visualization**:
-   - **`| timechart bins=1000 mean(latency) as latency`**:
-     - **`timechart`**: This command generates a time series chart based on the aggregated mean latency data for get operations.
-     - **`bins=1000`**: This sets the maximum number of data points (or bins) to be represented in the chart, enabling a fine-grained view of the latency data over time.
-     - **`mean(latency) as latency`**: This indicates that the chart will display the average latency of get operations, effectively showing how this latency evolves over time.
+mstats: This command aggregates metrics from the Vault telemetry data.
 
-3. **Statistical Analysis**:
-   - **`| eventstats perc90(latency) perc50(latency)`**:
-     - **`eventstats`**: This command computes additional statistics (percentiles) based on the mean latency values from the timechart.
-     - **`perc90(latency)`**: This calculates the 90th percentile of latency for the get operations, indicating the latency threshold below which 90% of the requests fall. This is useful for identifying potential outliers or performance issues affecting a small number of operations.
-     - **`perc50(latency)`**: This computes the median (50th percentile) latency, which represents the middle point of the latency values. This metric provides a general sense of the typical performance users experience during get operations.
+latest(vault.raft-storage.get.mean): This function retrieves the most recent average latency recorded for "get" operations in the Raft storage backend. This metric reflects how long it typically takes to retrieve data from the storage.
 
-### Result
+where vault_telemetry AND cluster=$cluster$: This clause filters the metrics to include only those from the specified telemetry source (vault_telemetry) and for a particular cluster (indicated by $cluster$).
+
+span=1m: This parameter aggregates the data over 1-minute intervals, allowing for a detailed analysis of latency trends for get operations.
+
+Timechart Visualization:
+
+| timechart bins=1000 mean(latency) as latency:
+
+timechart: This command generates a time series chart based on the aggregated mean latency data for get operations.
+
+bins=1000: This sets the maximum number of data points (or bins) to be represented in the chart, enabling a fine-grained view of the latency data over time.
+
+mean(latency) as latency: This indicates that the chart will display the average latency of get operations, effectively showing how this latency evolves over time.
+
+Statistical Analysis:
+
+| eventstats perc90(latency) perc50(latency):
+
+eventstats: This command computes additional statistics (percentiles) based on the mean latency values from the timechart.
+
+perc90(latency): This calculates the 90th percentile of latency for the get operations, indicating the latency threshold below which 90% of the requests fall. This is useful for identifying potential outliers or performance issues affecting a small number of operations.
+
+perc50(latency): This computes the median (50th percentile) latency, which represents the middle point of the latency values. This metric provides a general sense of the typical performance users experience during get operations.
+
+Result:
+
 The output of this query will yield a time series visualization that depicts the average latency of get operations handled by the Raft storage backend over time. Additionally, it will provide metrics indicating the 90th and 50th percentiles of latency.
 
-### Potential Insights
-1. **Storage Operation Performance**: Monitoring the average latency for get operations is crucial for assessing the performance of the storage layer in Vault. High latency can signify inefficiencies in data retrieval, potentially impacting the overall performance of applications relying on Vault.
+Open image-20241008-073446.png
+image-20241008-073446.png
+Visual Representation
 
-2. **Identifying Latency Issues**: The 90th percentile of latency can help pinpoint if a subset of get operations experiences significantly longer response times. This information is essential for addressing performance bottlenecks.
+Open image-20241008-073625.png
+image-20241008-073625.png
+ 
 
-3. **Operational Monitoring**: Tracking latency over time allows you to observe trends, such as increased latency during specific periods or following changes in system configuration. This analysis is vital for capacity planning and operational adjustments.
+Duration of put Operation
 
-### Example Use Case
-If you discover that the average latency for get operations significantly increases during high-traffic times or after certain deployments, you may want to investigate possible causes. This could include analyzing the load on the Raft storage backend, examining network performance, or optimizing configuration settings to enhance data retrieval efficiency.
 
-Overall, this query serves as an essential tool for monitoring and analyzing the performance of get operations within the Raft storage backend of HashiCorp Vault, enabling proactive management and optimization of storage performance.
-========================================================================================================================================================================================
 
-###17.Duration of put Operation
-| mstats latest(vault.raft-storage.put.mean) as latency where `vault_telemetry` AND cluster=$cluster$ span=1m
+| mstats latest(vault.raft-storage.put.mean) as latency where vault_telemetry AND cluster=$cluster$ span=1m
 | timechart bins=1000 mean(latency) as latency
 | eventstats perc90(latency) perc50(latency)
+Explanation:
 
 This query monitors the duration of "put" operations within HashiCorp Vault’s Raft storage backend, focusing on the average latency of these operations over time. Here's a detailed breakdown of each component of the query:
 
-### Query Breakdown
+ 
 
-1. **Mean Latency Calculation for Put Operations**:
-   - **`| mstats latest(vault.raft-storage.put.mean) as latency where vault_telemetry AND cluster=$cluster$ span=1m`**:
-     - **`mstats`**: This command aggregates metrics from the Vault telemetry data.
-     - **`latest(vault.raft-storage.put.mean)`**: This function retrieves the most recent average latency recorded for "put" operations in the Raft storage backend. This metric indicates how long it typically takes to store or update data in the storage.
-     - **`where vault_telemetry AND cluster=$cluster$`**: This clause filters the metrics to include only those from the specified telemetry source (`vault_telemetry`) and for a particular cluster (indicated by `$cluster$`).
-     - **`span=1m`**: This parameter aggregates the data over 1-minute intervals, allowing for a detailed analysis of latency trends for put operations.
+Mean Latency Calculation for Put Operations:
 
-2. **Timechart Visualization**:
-   - **`| timechart bins=1000 mean(latency) as latency`**:
-     - **`timechart`**: This command generates a time series chart based on the aggregated mean latency data for put operations.
-     - **`bins=1000`**: This sets the maximum number of data points (or bins) to be represented in the chart, enabling a fine-grained view of the latency data over time.
-     - **`mean(latency) as latency`**: This indicates that the chart will display the average latency of put operations, effectively showing how this latency evolves over time.
+| mstats latest(vault.raft-storage.put.mean) as latency where vault_telemetry AND cluster=$cluster$ span=1m:
 
-3. **Statistical Analysis**:
-   - **`| eventstats perc90(latency) perc50(latency)`**:
-     - **`eventstats`**: This command computes additional statistics (percentiles) based on the mean latency values from the timechart.
-     - **`perc90(latency)`**: This calculates the 90th percentile of latency for the put operations, indicating the latency threshold below which 90% of the requests fall. This is useful for identifying potential outliers or performance issues affecting a small number of operations.
-     - **`perc50(latency)`**: This computes the median (50th percentile) latency, which represents the middle point of the latency values. This metric provides a general sense of the typical performance users experience during put operations.
+mstats: This command aggregates metrics from the Vault telemetry data.
 
-### Result
+latest(vault.raft-storage.put.mean): This function retrieves the most recent average latency recorded for "put" operations in the Raft storage backend. This metric indicates how long it typically takes to store or update data in the storage.
+
+where vault_telemetry AND cluster=$cluster$: This clause filters the metrics to include only those from the specified telemetry source (vault_telemetry) and for a particular cluster (indicated by $cluster$).
+
+span=1m: This parameter aggregates the data over 1-minute intervals, allowing for a detailed analysis of latency trends for put operations.
+
+Timechart Visualization:
+
+| timechart bins=1000 mean(latency) as latency:
+
+timechart: This command generates a time series chart based on the aggregated mean latency data for put operations.
+
+bins=1000: This sets the maximum number of data points (or bins) to be represented in the chart, enabling a fine-grained view of the latency data over time.
+
+mean(latency) as latency: This indicates that the chart will display the average latency of put operations, effectively showing how this latency evolves over time.
+
+Statistical Analysis:
+
+| eventstats perc90(latency) perc50(latency):
+
+eventstats: This command computes additional statistics (percentiles) based on the mean latency values from the timechart.
+
+perc90(latency): This calculates the 90th percentile of latency for the put operations, indicating the latency threshold below which 90% of the requests fall. This is useful for identifying potential outliers or performance issues affecting a small number of operations.
+
+perc50(latency): This computes the median (50th percentile) latency, which represents the middle point of the latency values. This metric provides a general sense of the typical performance users experience during put operations.
+
+Result:
+
 The output of this query will yield a time series visualization that depicts the average latency of put operations handled by the Raft storage backend over time. Additionally, it will provide metrics indicating the 90th and 50th percentiles of latency.
 
-### Potential Insights
-1. **Storage Operation Performance**: Monitoring the average latency for put operations is crucial for assessing the performance of the storage layer in Vault. High latency can signify inefficiencies in data storage or updates, potentially impacting the overall performance of applications relying on Vault.
+Open image-20241008-073852.png
+image-20241008-073852.png
+ 
 
-2. **Identifying Latency Issues**: The 90th percentile of latency can help pinpoint if a subset of put operations experiences significantly longer response times. This information is essential for addressing performance bottlenecks.
+Visual Representation:
 
-3. **Operational Monitoring**: Tracking latency over time allows you to observe trends, such as increased latency during specific periods or following changes in system configuration. This analysis is vital for capacity planning and operational adjustments.
+Open image-20241008-073947.png
+image-20241008-073947.png
+ 
 
-### Example Use Case
-If you find that the average latency for put operations significantly increases during peak usage hours or after specific deployments, you may want to investigate possible causes. This could include analyzing the load on the Raft storage backend, examining network performance, or optimizing configuration settings to enhance data storage efficiency.
+Duration of Delete Operation:
 
-Overall, this query serves as an essential tool for monitoring and analyzing the performance of put operations within the Raft storage backend of HashiCorp Vault, enabling proactive management and optimization of storage performance.
-============================================================================================================================================================================================================================
 
-###18.Duration of Delete Operation
-| mstats latest(vault.raft-storage.delete.mean) as latency where `vault_telemetry` AND cluster=$cluster$ span=1m
+
+| mstats latest(vault.raft-storage.delete.mean) as latency where vault_telemetry AND cluster=$cluster$ span=1m
 | timechart bins=1000 mean(latency) as latency
 | eventstats perc90(latency) perc50(latency)
+Mean Latency Calculation for Delete Operations:
 
-This query monitors the duration of "delete" operations within HashiCorp Vault’s Raft storage backend, focusing on the average latency of these operations over time. Here’s a detailed breakdown of each component of the query:
+| mstats latest(vault.raft-storage.delete.mean) as latency where vault_telemetry AND cluster=$cluster$ span=1m:
 
-### Query Breakdown
+mstats: This command is used to aggregate metrics from Vault telemetry data.
 
-1. **Mean Latency Calculation for Delete Operations**:
-   - **`| mstats latest(vault.raft-storage.delete.mean) as latency where vault_telemetry AND cluster=$cluster$ span=1m`**:
-     - **`mstats`**: This command is used to aggregate metrics from Vault telemetry data.
-     - **`latest(vault.raft-storage.delete.mean)`**: This retrieves the most recent average latency recorded for "delete" operations in the Raft storage backend. This metric shows how long it typically takes to remove data from the storage.
-     - **`where vault_telemetry AND cluster=$cluster$`**: This filters the metrics to include only those from the specified telemetry source (`vault_telemetry`) and for a particular cluster (indicated by `$cluster$`).
-     - **`span=1m`**: This parameter aggregates the data over 1-minute intervals, allowing for a detailed analysis of latency trends for delete operations.
+latest(vault.raft-storage.delete.mean): This retrieves the most recent average latency recorded for "delete" operations in the Raft storage backend. This metric shows how long it typically takes to remove data from the storage.
 
-2. **Timechart Visualization**:
-   - **`| timechart bins=1000 mean(latency) as latency`**:
-     - **`timechart`**: This command generates a time series chart based on the aggregated mean latency data for delete operations.
-     - **`bins=1000`**: This sets the maximum number of data points (or bins) to be represented in the chart, enabling a fine-grained view of the latency data over time.
-     - **`mean(latency) as latency`**: This indicates that the chart will display the average latency of delete operations, effectively showing how this latency evolves over time.
+where vault_telemetry AND cluster=$cluster$: This filters the metrics to include only those from the specified telemetry source (vault_telemetry) and for a particular cluster (indicated by $cluster$).
 
-3. **Statistical Analysis**:
-   - **`| eventstats perc90(latency) perc50(latency)`**:
-     - **`eventstats`**: This command computes additional statistics (percentiles) based on the mean latency values from the timechart.
-     - **`perc90(latency)`**: This calculates the 90th percentile of latency for delete operations, indicating the latency threshold below which 90% of the requests fall. This helps identify any outliers or performance issues affecting a small number of operations.
-     - **`perc50(latency)`**: This computes the median (50th percentile) latency, representing the middle point of the latency values. This metric provides a general sense of the typical performance users experience during delete operations.
+span=1m: This parameter aggregates the data over 1-minute intervals, allowing for a detailed analysis of latency trends for delete operations.
 
-### Result
+Timechart Visualization:
+
+| timechart bins=1000 mean(latency) as latency:
+
+timechart: This command generates a time series chart based on the aggregated mean latency data for delete operations.
+
+bins=1000: This sets the maximum number of data points (or bins) to be represented in the chart, enabling a fine-grained view of the latency data over time.
+
+mean(latency) as latency: This indicates that the chart will display the average latency of delete operations, effectively showing how this latency evolves over time.
+
+Statistical Analysis:
+
+| eventstats perc90(latency) perc50(latency):
+
+eventstats: This command computes additional statistics (percentiles) based on the mean latency values from the timechart.
+
+perc90(latency): This calculates the 90th percentile of latency for delete operations, indicating the latency threshold below which 90% of the requests fall. This helps identify any outliers or performance issues affecting a small number of operations.
+
+perc50(latency): This computes the median (50th percentile) latency, representing the middle point of the latency values. This metric provides a general sense of the typical performance users experience during delete operations.
+
+Result:
+
 The output of this query will yield a time series visualization that depicts the average latency of delete operations handled by the Raft storage backend over time. Additionally, it will provide metrics indicating the 90th and 50th percentiles of latency.
 
-### Potential Insights
-1. **Storage Operation Performance**: Monitoring the average latency for delete operations is crucial for assessing the performance of the storage layer in Vault. High latency can signify inefficiencies in data deletion, which may affect applications relying on Vault.
+ 
 
-2. **Identifying Latency Issues**: The 90th percentile of latency can help pinpoint if a subset of delete operations experiences significantly longer response times. This information is essential for addressing performance bottlenecks.
+Open image-20241008-074038.png
+image-20241008-074038.png
+Visual Representation:
 
-3. **Operational Monitoring**: Tracking latency over time allows you to observe trends, such as increased latency during specific periods or following changes in system configuration. This analysis is vital for capacity planning and operational adjustments.
+ 
 
-### Example Use Case
-If you find that the average latency for delete operations significantly increases during peak usage hours or after specific deployments, you may want to investigate possible causes. This could include analyzing the load on the Raft storage backend, examining network performance, or optimizing configuration settings to enhance data deletion efficiency.
+Open image-20241008-074125.png
+image-20241008-074125.png
+ 
 
-Overall, this query serves as an essential tool for monitoring and analyzing the performance of delete operations within the Raft storage backend of HashiCorp Vault, enabling proactive management and optimization of storage performance.
-========================================================================================================================================================
