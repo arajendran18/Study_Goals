@@ -1,0 +1,23 @@
+| mstats latest(vault.raft-storage.get.mean) as latency where vault_telemetry AND cluster=$cluster$ span=1m
+| timechart bins=1000 mean(latency) as latency
+| eventstats perc90(latency) perc50(latency)
+
+| mstats latest(vault.raft-storage.put.mean) as latency where vault_telemetry AND cluster=$cluster$ span=1m
+| timechart bins=1000 mean(latency) as latency
+| eventstats perc90(latency) perc50(latency)
+
+| mstats latest(vault.raft-storage.list.mean) as latency where `vault_telemetry` AND cluster=$cluster$ span=1m
+| timechart bins=1000 mean(latency) as latency
+| eventstats perc90(latency) perc50(latency)
+
+| mstats latest(vault.raft-storage.delete.mean) as latency where vault_telemetry AND cluster=$cluster$ span=1m
+| timechart bins=1000 mean(latency) as latency
+| eventstats perc90(latency) perc50(latency)
+
+| mstats mean(vault.core.handle_login_request.mean) as latency where vault_telemetry AND cluster=$cluster$ span=1m
+| timechart bins=1000 mean(latency) as latency
+| eventstats perc90(latency) perc50(latency)
+
+| mstats mean(vault.core.handle_request.mean) as latency where vault_telemetry AND cluster=$cluster$ span=1m
+| timechart bins=1000 mean(latency) as latency
+| eventstats perc90(latency) perc50(latency) | eval critical=20.0
