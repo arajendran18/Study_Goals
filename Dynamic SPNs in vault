@@ -1,0 +1,119 @@
+### Step 1: **Understand the Requirements (Detailed)**
+
+Before jumping into the technical validation of dynamic Azure SPNs (Service Principal Names) in Vault, it’s crucial to clearly understand the specific requirements for your scenario. Here's a breakdown of what to consider in this step:
+
+---
+
+#### 1.1. **Identify the Purpose of Dynamic SPNs**
+   - **What are dynamic SPNs?**  
+     A Service Principal Name (SPN) is a security identity that is used by applications or automated tools to access Azure resources. In Vault, **dynamic SPNs** are credentials generated on the fly (i.e., when requested) with short-lived, just-in-time access to Azure resources. These SPNs are automatically revoked or expire after their time-to-live (TTL) period ends, ensuring minimal security risk.
+
+   - **Why use dynamic SPNs?**  
+     Dynamic SPNs are often used to reduce security risks, improve automation, and maintain compliance by ensuring that applications, scripts, or users only have temporary access to Azure resources. This eliminates the need for static, long-lived credentials that could be compromised.
+
+   **Questions to ask:**
+   - Which Azure resources (e.g., Virtual Machines, Storage Accounts, Azure SQL Databases) will these SPNs access?
+   - Will these SPNs be used for automation tasks, app authentication, or resource provisioning?
+   - What permissions (roles) should these SPNs have (e.g., **Reader**, **Contributor**, or **Owner**)?
+
+---
+
+#### 1.2. **Define Resource Scope**
+   - **Azure Subscriptions & Resource Groups**  
+     Dynamic SPNs can be scoped to specific Azure resources such as **Subscriptions**, **Resource Groups**, or even down to specific **resources** (e.g., a Virtual Machine or a Storage Account). It’s important to identify the resources that will be accessed by the SPNs.
+
+     **Example Questions:**
+     - What Azure **subscription(s)** will these SPNs need access to?  
+       (e.g., Production Subscription ID: `XXXX-XXXX-XXXX`, Non-Production Subscription ID: `YYYY-YYYY-YYYY`)
+     - What **resource groups** will they operate within?  
+       (e.g., Production RG: `prod-resource-group`, Non-Prod RG: `dev-resource-group`)
+     - Should the SPNs have access to **all resources** within a resource group or subscription, or only specific resources?  
+       (e.g., SPNs should only access a specific Azure SQL database, not the entire resource group.)
+
+   - **Specific Operations**  
+     Define what actions these SPNs are expected to perform, which will guide you in choosing the appropriate **Azure Role** for each SPN.
+
+     **Example Operations:**
+     - Read data from a storage account?
+     - Write logs to an Azure Log Analytics workspace?
+     - Provision a new Virtual Machine in a specific resource group?
+
+   **Actions to consider:**
+   - Use a **least privilege approach**: Define only the minimum necessary access. For example, assign the "Reader" role instead of "Contributor" if the SPN only needs to view data.
+   - Specify the scope of access clearly to avoid over-privileged SPNs.
+
+---
+
+#### 1.3. **Identify the Vault Role and Policies**
+   - **Vault Role Definitions**  
+     Vault allows you to create **roles** that define the permissions assigned to dynamic SPNs. These roles map to Azure roles (like Reader, Contributor) and define how and where the SPNs will be applied.
+   
+     **Questions to clarify:**
+     - Which Vault **roles** will be associated with the dynamic SPNs in both PRD and NPD environments?
+     - Will different roles be required for different Azure resources or operations?
+   
+   - **Vault Policies**  
+     Vault policies determine which actions are allowed within Vault, including creating or using dynamic SPNs. These policies should ensure that the right entities (applications, users, scripts) can request SPNs with the appropriate permissions.
+
+     **Example Policy Considerations:**
+     - Should only certain applications be allowed to request dynamic SPNs?
+     - Can specific Vault users request dynamic SPNs for PRD, but not NPD?
+     - Should the policy limit which Azure roles (e.g., Reader, Contributor) can be requested by each Vault role?
+
+---
+
+#### 1.4. **Determine the TTL and Renewal Process**
+   - **Time-to-Live (TTL)**  
+     Dynamic SPNs are created with a short TTL, meaning they automatically expire after a certain period. This helps to reduce the risk of stale or compromised credentials being used indefinitely.
+
+     **Example TTL Questions:**
+     - What should the default TTL be for dynamic SPNs?  
+       (e.g., **1 hour**, **24 hours**)
+     - Can the TTL be extended, or should the SPNs be non-renewable to enhance security?
+
+   - **Renewal and Revocation**  
+     Understand how SPNs will be **renewed** or **revoked**:
+     - Can the credentials be renewed automatically if the application needs more time?
+     - Should there be a manual process to revoke SPNs if a security breach is suspected?
+
+---
+
+#### 1.5. **Validate in Both PRD and NPD Environments**
+   - Ensure you understand the differences between **Production (PRD)** and **Non-Production (NPD)** environments:
+     - What resources or services differ between PRD and NPD?
+     - How will testing and validation in NPD ensure security and correctness when rolling out in PRD?
+     - Are there different Azure subscriptions, resource groups, or policies in each environment?
+
+   - Be aware of any environment-specific configurations for dynamic SPNs:
+     - For PRD, SPNs might have stricter access controls, higher monitoring, and shorter TTLs.
+     - NPD might have more flexibility for testing, but still mimic real-world production settings.
+
+---
+
+### Step 1 Checklist:
+
+1. **Purpose of SPNs**:
+   - Are they for app authentication, automation, resource management, etc.?
+
+2. **Resource Scope**:
+   - Which Azure resources (subscriptions, resource groups, individual resources) will SPNs access?
+   - What actions will SPNs perform on those resources?
+
+3. **Vault Role and Policies**:
+   - Have you defined the necessary roles in Vault for PRD and NPD environments?
+   - Are your Vault policies set up to securely handle requests for SPNs?
+
+4. **TTL and Renewal**:
+   - What TTL should SPNs have, and can they be renewed?
+   - How will you handle SPN revocation or renewal?
+
+5. **Environment Differences**:
+   - Are PRD and NPD environments configured differently?
+   - What extra security measures are in place for PRD compared to NPD?
+
+---
+
+### Real-World Scenario Example:
+- **Automated App Deployment**: You have a web app that needs to automatically provision Azure VMs in a specific resource group as part of a CI/CD pipeline. Instead of using long-lived credentials, a dynamic SPN is requested from Vault every time the app needs to provision a new VM, and the SPN expires after 24 hours. The app only has Contributor access to the specific resource group in both NPD (for testing) and PRD (for production).
+  
+By understanding and defining these aspects, you’ll be well-prepared to proceed with configuring, testing, and validating dynamic Azure SPNs in both environments.
