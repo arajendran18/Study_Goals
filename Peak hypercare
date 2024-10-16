@@ -1,0 +1,117 @@
+Absolutely! Below are **sub-stories** you can include under the **"Peak Hypercare" epic** for Vault-related operations. These stories focus on ensuring system reliability, rapid response, monitoring, and smooth operations during critical phases.
+
+---
+
+## **Epic:** Peak Hypercare for Vault Operations  
+
+### 1. **Story 1: Monitor Vault Node Health and Availability**  
+   **Description:**  
+   Set up continuous monitoring to track the health and availability of Vault nodes during peak hypercare. Alerts should be triggered for any downtime or node failures.  
+
+   **Tasks:**  
+   - Configure monitoring tools (e.g., Splunk, Prometheus) to track Vault node metrics.  
+   - Create alerts for leadership loss, node unavailability, and latency issues.  
+   - Test alert notifications to ensure reliability.  
+
+---
+
+### 2. **Story 2: Ensure High Availability and Cluster Synchronization**  
+   **Description:**  
+   Validate the synchronization between Vault clusters (e.g., primary, DR, and performance clusters) to prevent disruptions.  
+
+   **Tasks:**  
+   - Verify that replication between primary and DR clusters is enabled and working.  
+   - Monitor for any **raft leadership changes** and ensure smooth failovers.  
+   - Perform manual checks to ensure secrets and policies are consistent across clusters.  
+
+---
+
+### 3. **Story 3: Validate Performance of Secret Engines**  
+   **Description:**  
+   Ensure all secret engines (AWS, Azure, etc.) are working correctly during hypercare to avoid disruptions in service.  
+
+   **Tasks:**  
+   - Validate access to critical secret engines in both production (PRD) and non-production (NPD) environments.  
+   - Test the generation of dynamic credentials from AWS and Azure engines.  
+   - Set up automated scripts to periodically validate the availability of secret engines.  
+
+---
+
+### 4. **Story 4: Implement Incident Management Process**  
+   **Description:**  
+   Define the incident management process during peak hypercare, ensuring rapid issue detection and resolution.  
+
+   **Tasks:**  
+   - Define escalation paths and assign responsibilities for responding to Vault incidents.  
+   - Set up PagerDuty or ServiceNow to log alerts as incidents and notify the on-call team.  
+   - Document SLAs for responding to and resolving incidents during hypercare.  
+
+---
+
+### 5. **Story 5: Backup and Restore Validation**  
+   **Description:**  
+   Ensure Vault backups are taken regularly, and test restoration processes to confirm they work during emergencies.  
+
+   **Tasks:**  
+   - Schedule periodic backups of Vault data and validate backups for integrity.  
+   - Perform a mock restore from backup to ensure the process is well-documented and functional.  
+   - Ensure access to backups in both the primary and DR environments.  
+
+---
+
+### 6. **Story 6: Monitor Vault Latency and API Performance**  
+   **Description:**  
+   Track latency in API calls and monitor user access to the Vault UI to ensure peak performance during hypercare.  
+
+   **Tasks:**  
+   - Use Splunk or other monitoring tools to track Vault API latency.  
+   - Set thresholds for acceptable latency and configure alerts for anomalies.  
+   - Monitor Vault UI login success/failure trends to detect potential authentication issues.  
+
+---
+
+### 7. **Story 7: Optimize Access Control and Policy Management**  
+   **Description:**  
+   Validate access control policies and ensure they are appropriately configured to prevent overprivileged access.  
+
+   **Tasks:**  
+   - Scan for overprivileged policies using the linter integrated with the GitLab pipeline.  
+   - Audit all active Vault policies and roles to ensure they align with security guidelines.  
+   - Apply policy corrections to reduce access to the least privilege required.  
+
+---
+
+### 8. **Story 8: Communication and Documentation**  
+   **Description:**  
+   Establish communication channels and maintain detailed documentation for operations during hypercare.  
+
+   **Tasks:**  
+   - Set up communication channels (e.g., Slack, Teams) for real-time updates.  
+   - Document all hypercare processes, incidents, and resolutions for future reference.  
+   - Provide daily status reports to stakeholders on Vault operations during hypercare.  
+
+---
+
+### 9. **Story 9: Validate Token and Authentication Mechanisms**  
+   **Description:**  
+   Ensure that all Vault authentication methods (OIDC, AWS IAM, AppRole) are working without issues.  
+
+   **Tasks:**  
+   - Validate OIDC integration with Azure AD and test user access to the Vault UI.  
+   - Check that AWS IAM roles can successfully authenticate and generate credentials.  
+   - Ensure token renewals and expirations are functioning as expected.  
+
+---
+
+### 10. **Story 10: Post-Hypercare Handover and Reporting**  
+   **Description:**  
+   After the hypercare period, hand over responsibilities and document key learnings for future operations.  
+
+   **Tasks:**  
+   - Prepare a post-hypercare summary report, highlighting any issues and resolutions.  
+   - Conduct a retrospective to identify areas for improvement.  
+   - Handover monitoring and incident management to regular operations teams.  
+
+---
+
+These stories cover all key aspects required for smooth Vault operations during peak hypercare, from **monitoring and incident management** to **backup validation** and **performance checks**. This approach ensures that your Vault infrastructure runs seamlessly during the critical phase and that any issues are quickly addressed.
