@@ -156,70 +156,154 @@ This query helps monitor the overall health and responsiveness of the Vault syst
 ### **Summary**  
 Each query serves a specific purpose in **proactively monitoring the health, performance, and stability** of the Vault cluster. By tracking request latencies, memory usage, leadership status, and login times, administrators can detect and mitigate potential issues before they impact services. Regular monitoring ensures that Vault operates smoothly, ensuring **high availability, fast response times, and secure access** to secrets.
 
+Here’s a detailed explanation of the purpose for each query, including the context, impact, and potential causes of the issues it identifies:
 
-	9. P1: <NON-PROD>: DR Replication is not in sync
+---
 
+### **9. P1: <NON-PROD>: DR Replication Not in Sync**  
+```plaintext
 | mstats latest(vault.replication.wal.last_dr_wal.value) AS dr_wal_value WHERE `vault_telemetry` AND cluster=npd-vault BY role 
 | join type=left [
 | mstats latest(vault.replication.fsm.last_remote_wal.value) AS dr_wal_remote_value WHERE `vault_telemetry` AND cluster=npd-dr-vault BY role ]
 | eval diff = dr_wal_value - dr_wal_remote_value
 | eval cluster_sync = if(diff > 1000, "Not In Sync", "In Sync")
 | where cluster_sync="Not In Sync"
+```
+**Purpose:**  
+- Tracks the **DR (Disaster Recovery) replication status** between the primary non-production (NPD) Vault cluster and its DR counterpart.
+- **Impact:** If DR replication is out of sync, in case of a disaster, the failover may lead to inconsistent data or loss of critical secrets.
+- **Possible Causes:**
+  - Network interruptions between the clusters.
+  - DR nodes lagging behind due to high load or resource issues.
+  - Configuration mismatch between primary and DR clusters.
 
-	10. P1: <NON-PROD>: Performance replication not in sync
+---
 
+### **10. P1: <NON-PROD>: Performance Replication Not in Sync**  
+```plaintext
 | mstats latest(vault.replication.wal.last_wal.value) AS perf_wal_value WHERE `vault_telemetry` AND cluster=npd-vault BY role 
 | join type=left [
 | mstats latest(vault.replication.wal.last_performance_wal.value) AS perf_wal_remote_value WHERE `vault_telemetry` AND cluster=npd-vault BY role ]
 | eval diff = perf_wal_value - perf_wal_remote_value
 | eval cluster_sync = if(diff > 2000, "Not In Sync", "In Sync")
 | where cluster_sync="Not In Sync"
+```
+**Purpose:**  
+- Monitors **performance replication** between Vault nodes in the non-production environment.
+- **Impact:** If performance replication is delayed or fails, clients may experience outdated secret data or configuration issues.
+- **Possible Causes:**  
+  - Network congestion between nodes.
+  - Resource constraints (e.g., memory or CPU) on performance nodes.
+  - Incorrect performance replication settings.
 
-	11. P1: <NON-PROD>: Vault node is sealed
+---
 
+### **11. P1: <NON-PROD>: Vault Node Is Sealed**  
+```plaintext
 | mstats latest(vault.core.unsealed.value) AS raw WHERE `vault_telemetry` AND cluster="npd*vault" BY host 
 | sort raw, host
 | eval seal_status=case(raw==0.0, "Sealed", raw==1.0, "Unsealed")
 | fields host,seal_status 
 | where seal_status="Sealed"
+```
+**Purpose:**  
+- Checks if any **Vault nodes are sealed** in the non-production cluster.
+- **Impact:** A sealed node cannot serve requests, causing disruptions to secret management and credential generation.
+- **Possible Causes:**  
+  - Manual sealing by administrators.
+  - Node reboot or crash.
+  - Configuration or auto-unseal failures.
 
-	12. P1: <PROD>: Performance replication not in sync
+---
 
+### **12. P1: <PROD>: Performance Replication Not in Sync**  
+```plaintext
 | mstats latest(vault.replication.wal.last_wal.value) AS perf_wal_value WHERE `vault_telemetry` AND cluster=prd-vault BY role 
 | join type=left [
 | mstats latest(vault.replication.wal.last_performance_wal.value) AS perf_wal_remote_value WHERE `vault_telemetry` AND cluster=prd-vault BY role ]
 | eval diff = perf_wal_value - perf_wal_remote_value
 | eval cluster_sync = if(diff > 1000, "Not In Sync", "In Sync")
 | where cluster_sync="Not In Sync"
+```
+**Purpose:**  
+- Monitors **performance replication synchronization** for the production Vault cluster.
+- **Impact:** Out-of-sync performance replication may cause delayed or inconsistent data, impacting mission-critical applications.
+- **Possible Causes:**  
+  - Heavy load on the primary nodes.
+  - Resource bottlenecks or incorrect settings.
+  - Latency or packet drops in the network.
 
+---
 
-	13. P1: <PROD>: CPU usage exceeds 95%
-
+### **13. P1: <PROD>: CPU Usage Exceeds 95%**  
+```plaintext
 | mstats avg(_value) prestats=true WHERE metric_name="cpu.usage_user" AND index="vault-metrics" AND cluster="prd*vault" AND (host=*) span=1m BY host 
 | stats avg(_value) AS cpu_usage BY host
 | eval Critical_Usage = if(cpu_usage > 95, "Yes", "No")
 | table host Critical_Usage cpu_usage
 | where Critical_Usage="Yes"
+```
+**Purpose:**  
+- Monitors **CPU usage on production Vault nodes** to detect excessive load.
+- **Impact:** CPU exhaustion can cause nodes to become unresponsive, affecting Vault availability and response times.
+- **Possible Causes:**  
+  - High number of concurrent requests.
+  - Intensive background processes.
+  - Misconfiguration or inefficient policies causing excessive resource usage.
 
+---
 
-	14. P1: <PROD>: DR replication is not in sync
-
+### **14. P1: <PROD>: DR Replication Not in Sync**  
+```plaintext
 | mstats latest(vault.replication.wal.last_dr_wal.value) AS dr_wal_value WHERE `vault_telemetry` AND cluster=prd-vault BY role 
 | join type=left [
 | mstats latest(vault.replication.fsm.last_remote_wal.value) AS dr_wal_remote_value WHERE `vault_telemetry` AND cluster=prd-dr-vault BY role ]
 | eval diff = dr_wal_value - dr_wal_remote_value
 | eval cluster_sync = if(diff > 1000, "Not In Sync", "In Sync")
 | where cluster_sync="Not In Sync"
+```
+**Purpose:**  
+- Tracks the **synchronization status between production Vault and its DR cluster**.
+- **Impact:** Lack of sync might result in data loss or inconsistencies during failover to DR.
+- **Possible Causes:**  
+  - Network disruptions or high latency.
+  - Resource exhaustion on DR nodes.
+  - Misconfiguration of replication settings.
 
-	15. P1: <PROD>: Vault Fault Tolerance goes below 2
+---
 
+### **15. P1: <PROD>: Vault Fault Tolerance Below 2**  
+```plaintext
 | mstats max(vault.autopilot.failure_tolerance.value) as count where `vault_telemetry` AND cluster="prd-vault" span=1m
 | timechart bins=1000 sum(count) AS count
 | where count < 2
+```
+**Purpose:**  
+- Monitors **Vault’s failure tolerance**, which indicates how many nodes can fail without disrupting the cluster.
+- **Impact:** If the tolerance drops below 2, even minor failures may cause an outage, impacting availability.
+- **Possible Causes:**  
+  - Node failures or scaling issues.
+  - Incorrect auto-scaling or autopilot configuration.
+  - Network partitions causing nodes to disconnect.
 
-	16. P1: <PROD>: Vault Node Memory exceeds 90%
+---
 
+### **16. P1: <PROD>: Vault Node Memory Exceeds 90%**  
+```plaintext
 | mstats max(mem.used_percent) AS used WHERE `vault_telemetry` AND cluster="prd*vault" AND (host=*) BY host span=1m
 | stats max(used) AS used BY host
 | eval Critical_Usage = if(used > 90, "Yes", "No")
 | where Critical_Usage="Yes"
+```
+**Purpose:**  
+- Monitors **memory usage on production Vault nodes** to detect when it exceeds 90%.
+- **Impact:** Excessive memory usage may cause nodes to crash or become unresponsive, disrupting secret management and authentication.
+- **Possible Causes:**  
+  - Memory leaks in Vault processes.
+  - High volume of concurrent requests.
+  - Large secrets or configurations consuming excessive memory.
+
+---
+
+### **Summary**  
+These queries monitor **critical metrics across non-production and production Vault clusters**, focusing on **replication, resource usage, and node health**. The goal is to ensure that Vault remains highly available, performant, and resilient to failures. By detecting issues early, such as replication delays or resource bottlenecks, administrators can proactively address them before they impact the system.
