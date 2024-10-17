@@ -1,0 +1,57 @@
+	1. INFO: <PROD> : Core Leader Lost
+
+| mstats sum(vault.core.leadership_lost.count) as count where `vault_telemetry` AND cluster=* span=1m
+| timechart bins=1000 sum(count) AS count
+| where count>=2
+
+	2. INFO: <PROD>: Vault DELETE Request Latency
+
+| mstats latest(vault.raft-storage.delete.mean) as latency where `vault_telemetry` AND cluster="prd-vault" span=1m
+| timechart bins=1000 mean(latency) as latency
+| eventstats perc90(latency) perc50(latency)
+| where latency>15
+
+	3. INFO: <PROD> : Vault GET Request Latency
+
+| mstats latest(vault.raft-storage.get.mean) as latency where `vault_telemetry` AND cluster="prd-vault" span=1m
+| timechart bins=1000 mean(latency) as latency
+| eventstats perc90(latency) perc50(latency)
+| where latency>0.3
+
+
+	4. INFO: <PROD> :  Vault List Latency
+
+| mstats latest(vault.raft-storage.list.mean) as latency where `vault_telemetry` AND cluster=* span=1m
+| timechart bins=1000 mean(latency) as latency
+| eventstats perc90(latency) perc50(latency)
+| where latency>1.5
+
+
+	5. INFO: <PROD>: Vault login latency
+
+| mstats mean(vault.core.handle_login_request.mean) as latency where `vault_telemetry` AND cluster=* span=1m
+| timechart bins=1000 mean(latency) as latency
+| eventstats perc90(latency) perc50(latency)
+| where latency>80
+
+	6. INFO: <PROD>: Vault Node Memory exceeds 70%
+
+| mstats max(mem.used_percent) AS used WHERE `vault_telemetry` AND cluster=* AND (host=*) BY host span=1m
+| stats max(used) AS used BY host
+| eval Critical_Usage = if(used > 70, "Yes", "No")
+| where Critical_Usage="Yes"
+
+	7. INFO: <PROD>: Vault PUT Request Latency
+
+| mstats latest(vault.raft-storage.put.mean) as latency where `vault_telemetry` AND cluster="prd-vault" span=1m
+| timechart bins=1000 mean(latency) as latency
+| eventstats perc90(latency) perc50(latency)
+| where latency>10
+
+	8. INFO: <PROD> : Vault Request Latency
+
+| mstats mean(vault.core.handle_request.mean) as latency where `vault_telemetry` AND cluster=prd*vault span=1m
+| timechart bins=1000 mean(latency) as latency
+| eventstats perc90(latency) perc50(latency)
+| where latency>10
+
