@@ -1,57 +1,157 @@
-	1. INFO: <PROD> : Core Leader Lost
+Here is a **detailed explanation of the purpose** for each query, including what each metric indicates, potential causes, and the impact on the Vault system:
 
+---
+
+### **1. Core Leader Lost Detection**  
+```plaintext
 | mstats sum(vault.core.leadership_lost.count) as count where `vault_telemetry` AND cluster=* span=1m
 | timechart bins=1000 sum(count) AS count
 | where count>=2
+```
+**Purpose:**  
+- This query tracks **how often a Vault leader node loses leadership**.  
+- **Impact:** Leadership loss triggers re-election in a Vault cluster, and during this process, operations (such as reads and writes) might temporarily fail or become slow.  
+- **Possible Causes:**
+  - Network disruptions or high latency between nodes.
+  - Resource exhaustion (CPU, memory) on the leader node.
+  - Unstable Raft consensus algorithm due to misconfiguration or node failures.
+  
+This query ensures quick detection of cluster instability to prevent degraded service or unexpected behavior.
 
-	2. INFO: <PROD>: Vault DELETE Request Latency
+---
 
+### **2. DELETE Request Latency Monitoring**  
+```plaintext
 | mstats latest(vault.raft-storage.delete.mean) as latency where `vault_telemetry` AND cluster="prd-vault" span=1m
 | timechart bins=1000 mean(latency) as latency
 | eventstats perc90(latency) perc50(latency)
 | where latency>15
+```
+**Purpose:**  
+- Monitors **the time taken for DELETE requests** on the Raft storage backend.  
+- **Impact:** Slow DELETE operations can cause delays when applications or users try to remove secrets, tokens, or leases, leading to failures in cleanup processes.
+- **Possible Causes:**  
+  - Disk I/O issues on storage nodes.
+  - Network latency between Vault nodes.
+  - Raft storage experiencing contention or performance degradation.
 
-	3. INFO: <PROD> : Vault GET Request Latency
+This query helps identify if there is any slowness when removing stale data, preventing storage bloat and operational delays.
 
+---
+
+### **3. GET Request Latency Monitoring**  
+```plaintext
 | mstats latest(vault.raft-storage.get.mean) as latency where `vault_telemetry` AND cluster="prd-vault" span=1m
 | timechart bins=1000 mean(latency) as latency
 | eventstats perc90(latency) perc50(latency)
 | where latency>0.3
+```
+**Purpose:**  
+- Monitors **latency in GET (read) requests** from the Raft storage backend.  
+- **Impact:** High latency in GET requests means secrets retrieval becomes slower, causing delays in applications that depend on Vault to access secrets (e.g., API tokens or credentials).  
+- **Possible Causes:**
+  - Heavy load on the storage backend.
+  - Insufficient resources on Vault nodes (e.g., CPU, memory).
+  - Network issues impacting communication between nodes.
 
+This query ensures Vault remains performant and responsive for secret lookups.
 
-	4. INFO: <PROD> :  Vault List Latency
+---
 
+### **4. LIST Request Latency Monitoring**  
+```plaintext
 | mstats latest(vault.raft-storage.list.mean) as latency where `vault_telemetry` AND cluster=* span=1m
 | timechart bins=1000 mean(latency) as latency
 | eventstats perc90(latency) perc50(latency)
 | where latency>1.5
+```
+**Purpose:**  
+- Tracks **latency for LIST operations**, which are used to enumerate secrets or mounts.  
+- **Impact:** If LIST requests are slow, it could affect workflows where Vault needs to query multiple paths, such as secret rotation or configuration management.  
+- **Possible Causes:**
+  - Large number of secrets or mounts stored in Vault.
+  - Insufficient backend capacity or storage bottlenecks.
+  - Excessive concurrent requests to the Vault service.
 
+This query ensures efficient listing of secrets and policies, improving the overall system’s usability.
 
-	5. INFO: <PROD>: Vault login latency
+---
 
+### **5. Login Request Latency Monitoring**  
+```plaintext
 | mstats mean(vault.core.handle_login_request.mean) as latency where `vault_telemetry` AND cluster=* span=1m
 | timechart bins=1000 mean(latency) as latency
 | eventstats perc90(latency) perc50(latency)
 | where latency>80
+```
+**Purpose:**  
+- Monitors **latency for handling user login requests** to Vault.  
+- **Impact:** If login operations are slow, users might experience delays accessing Vault secrets, impacting critical services.  
+- **Possible Causes:**
+  - Authentication backend (e.g., LDAP or AD) experiencing slowness.
+  - High load on the Vault server.
+  - Network latency or misconfigured authentication policies.
 
-	6. INFO: <PROD>: Vault Node Memory exceeds 70%
+This query helps ensure authentication remains fast and users can log in promptly.
 
+---
+
+### **6. Node Memory Usage Monitoring**  
+```plaintext
 | mstats max(mem.used_percent) AS used WHERE `vault_telemetry` AND cluster=* AND (host=*) BY host span=1m
 | stats max(used) AS used BY host
 | eval Critical_Usage = if(used > 70, "Yes", "No")
 | where Critical_Usage="Yes"
+```
+**Purpose:**  
+- Monitors **memory usage on individual Vault nodes** to detect if usage exceeds 70%.  
+- **Impact:** If a node consumes too much memory, it may crash or become unresponsive, disrupting the cluster.  
+- **Possible Causes:**
+  - Memory leaks in Vault processes.
+  - High number of concurrent requests.
+  - Insufficient memory allocation on the node.
 
-	7. INFO: <PROD>: Vault PUT Request Latency
+This query ensures timely action if nodes are running out of memory, preventing unexpected failures.
 
+---
+
+### **7. PUT Request Latency Monitoring**  
+```plaintext
 | mstats latest(vault.raft-storage.put.mean) as latency where `vault_telemetry` AND cluster="prd-vault" span=1m
 | timechart bins=1000 mean(latency) as latency
 | eventstats perc90(latency) perc50(latency)
 | where latency>10
+```
+**Purpose:**  
+- Monitors **latency of PUT operations**, which are used to store secrets or update policies in the Raft storage backend.  
+- **Impact:** High latency in PUT requests affects how quickly new secrets are written or policies are updated, which can delay deployments or configuration changes.  
+- **Possible Causes:**
+  - Disk I/O bottlenecks.
+  - Network issues between Vault nodes.
+  - Large payload sizes causing slow processing.
 
-	8. INFO: <PROD> : Vault Request Latency
+This query ensures fast write operations to maintain operational efficiency.
 
+---
+
+### **8. Overall Request Latency Monitoring**  
+```plaintext
 | mstats mean(vault.core.handle_request.mean) as latency where `vault_telemetry` AND cluster=prd*vault span=1m
 | timechart bins=1000 mean(latency) as latency
 | eventstats perc90(latency) perc50(latency)
 | where latency>10
+```
+**Purpose:**  
+- Tracks the **overall latency of all Vault requests** handled by the cluster.  
+- **Impact:** High overall request latency indicates performance bottlenecks, impacting all operations, including reading, writing, and authentication.  
+- **Possible Causes:**
+  - Insufficient resources or high CPU usage.
+  - Network congestion between clients and Vault servers.
+  - Backend storage system under heavy load.
 
+This query helps monitor the overall health and responsiveness of the Vault system.
+
+---
+
+### **Summary**  
+Each query serves a specific purpose in **proactively monitoring the health, performance, and stability** of the Vault cluster. By tracking request latencies, memory usage, leadership status, and login times, administrators can detect and mitigate potential issues before they impact services. Regular monitoring ensures that Vault operates smoothly, ensuring **high availability, fast response times, and secure access** to secrets.
