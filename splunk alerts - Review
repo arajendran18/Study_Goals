@@ -303,6 +303,75 @@ Here’s a detailed explanation of the purpose for each query, including the con
   - High volume of concurrent requests.
   - Large secrets or configurations consuming excessive memory.
 
+
+
+	17. P1: <PROD>: Vault Node is sealed
+
+| mstats latest(vault.core.unsealed.value) AS raw WHERE `vault_telemetry` AND cluster="prd*vault" BY host 
+| sort raw, host
+| eval seal_status=case(raw==0.0, "Sealed", raw==1.0, "Unsealed")
+| table host, seal_status
+| where seal_status="Sealed"
+
+	18. P2:<NON-PROD>: Vault snapshot Failure
+
+| mstats latest(vault.autosnapshots.save.errors.value) as user WHERE sourcetype="hashicorp_vault_telemetry" index="vault-metrics" AND cluster=npd-vault span=1m
+
+	19. P2:<PROD>: Leader setup is failed
+
+| mstats max(vault.core.leadership_setup_failed.mean) as active_duration where `vault_telemetry` AND cluster="prd-vault" span=1h
+| timechart bins=1000 latest(active_duration) AS active_duration
+| where active_duration > 0
+
+	20. P2:<PROD>: Root Policy is used
+
+| mstats latest(vault.token.count.by_policy.value) as count where `vault_telemetry` AND cluster=prd*vault AND namespace IN ("*") by cluster,namespace,policy span=10m
+| stats sum(count) as count by _time,policy
+| eventstats latest(_time) as latesttime
+| where _time == latesttime
+| append [makeresults 1 | eval policy="root", count=0]
+| stats max(count) as num_tokens by policy
+| eval root_count=if(policy=="root",num_tokens,0), count=if(policy=="root",0,num_tokens), is_root=if(policy=="root",1,0)
+| sort -is_root, -num_tokens
+| head 12
+| sort -num_tokens 
+| fields - num_tokens is_root
+| where policy="root" AND root_count>=1
+
+
+	21. P2:<PROD>: Vault Node Auto Pilot State Unhealthy
+
+| mstats latest(vault.autopilot.node.healthy.value) as count where `vault_telemetry` AND cluster="prd-vault" span=30m
+| timechart bins=1000 sum(count) AS count
+| where count!=1
+
+
+	22. P2:<PROD>: Vault node Memory Exceeds 80%
+
+| mstats max(mem.used_percent) AS used WHERE `vault_telemetry` AND cluster=prd*vault AND (host=*) BY host span=1m
+| stats max(used) AS used BY host
+| eval Critical_Usage = if(used > 80, "Yes", "No") 
+| where Critical_Usage="Yes"
+
+	23. P2:<PROD>: Vault Raft storage io timeout
+
+index="vault-audit" "[ERROR] storage.raft: failed to heartbeat" AND "i/o timeout" host="cloud-infra-vault-prd*"
+
+	24. P2:<PROD>:  Vault raft unable to add peer
+
+index="vault-audit" "[ERROR] storage.raft: failed to appendEntries" AND "i/o timeout" host="cloud-infra-vault-prd*"
+
+	25. P2:<PROD>: Autopilot Failure Failure Tolerance is 2
+
+| mstats max(vault.autopilot.failure_tolerance.value) as count where `vault_telemetry` AND cluster="npd-vault" span=1m
+| timechart bins=1000 sum(count) AS count
+| where count < 2
+
+	26. P2:<PROD>: Vault snapshot failure
+
+| mstats latest(vault.autosnapshots.save.errors.value) as user WHERE sourcetype="hashicorp_vault_telemetry" index="vault-metrics" AND cluster=prd*vault span=1m
+
+
 ---
 
 ### **Summary**  
