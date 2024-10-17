@@ -303,76 +303,171 @@ Here’s a detailed explanation of the purpose for each query, including the con
   - High volume of concurrent requests.
   - Large secrets or configurations consuming excessive memory.
 
+Here’s a breakdown of each query, including its purpose, impact, and possible causes for alerts:
 
+---
 
-	17. P1: <PROD>: Vault Node is sealed
-
+### **17. P1: <PROD>: Vault Node is Sealed**
+- **Query:**  
+``` 
 | mstats latest(vault.core.unsealed.value) AS raw WHERE `vault_telemetry` AND cluster="prd*vault" BY host 
 | sort raw, host
 | eval seal_status=case(raw==0.0, "Sealed", raw==1.0, "Unsealed")
 | table host, seal_status
 | where seal_status="Sealed"
+```
+- **Purpose:** To identify if any Vault nodes in the production environment are sealed.
+- **Impact:** A sealed node cannot process requests, affecting the availability of secrets and operations dependent on Vault.
+- **Possible Causes:** 
+  - Manual sealing of the node for maintenance or security purposes.
+  - Automatic sealing due to an unseal key not being provided.
+  - Configuration errors or crashes that prevent the node from unsealing.
 
-	18. P2:<NON-PROD>: Vault snapshot Failure
+---
 
-| mstats latest(vault.autosnapshots.save.errors.value) as user WHERE sourcetype="hashicorp_vault_telemetry" index="vault-metrics" AND cluster=npd-vault span=1m
+### **18. P2: <NON-PROD>: Vault Snapshot Failure**
+- **Query:**  
+``` 
+| mstats latest(vault.autosnapshots.save.errors.value) AS user WHERE sourcetype="hashicorp_vault_telemetry" index="vault-metrics" AND cluster=npd-vault span=1m
+```
+- **Purpose:** To monitor for any errors during snapshot creation in the non-production Vault environment.
+- **Impact:** Failure to create snapshots can lead to data loss during recovery processes, making it difficult to restore to a previous state.
+- **Possible Causes:** 
+  - Disk space issues preventing snapshot creation.
+  - Configuration problems with the snapshot process.
+  - Network issues affecting connectivity to storage backends.
 
-	19. P2:<PROD>: Leader setup is failed
+---
 
-| mstats max(vault.core.leadership_setup_failed.mean) as active_duration where `vault_telemetry` AND cluster="prd-vault" span=1h
+### **19. P2: <PROD>: Leader Setup Failed**
+- **Query:**  
+```
+| mstats max(vault.core.leadership_setup_failed.mean) AS active_duration WHERE `vault_telemetry` AND cluster="prd-vault" span=1h
 | timechart bins=1000 latest(active_duration) AS active_duration
 | where active_duration > 0
+```
+- **Purpose:** To detect failures in the leadership setup process for the Vault cluster.
+- **Impact:** If a leader cannot be established, the cluster may not function correctly, leading to potential downtime and inability to serve requests.
+- **Possible Causes:** 
+  - Network partitioning preventing leader election.
+  - Configuration errors in cluster setup.
+  - Resource limitations (e.g., CPU or memory) impacting node performance.
 
-	20. P2:<PROD>: Root Policy is used
+---
 
-| mstats latest(vault.token.count.by_policy.value) as count where `vault_telemetry` AND cluster=prd*vault AND namespace IN ("*") by cluster,namespace,policy span=10m
-| stats sum(count) as count by _time,policy
-| eventstats latest(_time) as latesttime
+### **20. P2: <PROD>: Root Policy is Used**
+- **Query:**  
+```
+| mstats latest(vault.token.count.by_policy.value) AS count WHERE `vault_telemetry` AND cluster=prd*vault AND namespace IN ("*") BY cluster,namespace,policy span=10m
+| stats sum(count) AS count BY _time,policy
+| eventstats latest(_time) AS latesttime
 | where _time == latesttime
 | append [makeresults 1 | eval policy="root", count=0]
-| stats max(count) as num_tokens by policy
+| stats max(count) AS num_tokens BY policy
 | eval root_count=if(policy=="root",num_tokens,0), count=if(policy=="root",0,num_tokens), is_root=if(policy=="root",1,0)
 | sort -is_root, -num_tokens
 | head 12
-| sort -num_tokens 
+| sort -num_tokens
 | fields - num_tokens is_root
-| where policy="root" AND root_count>=1
+| where policy="root" AND root_count >= 1
+```
+- **Purpose:** To check if the root policy is actively being used and potentially mismanaged.
+- **Impact:** If the root policy is in use, it can pose a security risk, as it provides extensive permissions that could lead to accidental or malicious changes.
+- **Possible Causes:** 
+  - Tokens created with excessive permissions unintentionally assigned to users or applications.
+  - Lack of proper access control and policy management practices.
 
+---
 
-	21. P2:<PROD>: Vault Node Auto Pilot State Unhealthy
-
-| mstats latest(vault.autopilot.node.healthy.value) as count where `vault_telemetry` AND cluster="prd-vault" span=30m
+### **21. P2: <PROD>: Vault Node Auto Pilot State Unhealthy**
+- **Query:**  
+```
+| mstats latest(vault.autopilot.node.healthy.value) AS count WHERE `vault_telemetry` AND cluster="prd-vault" span=30m
 | timechart bins=1000 sum(count) AS count
-| where count!=1
+| where count != 1
+```
+- **Purpose:** To monitor the health of Vault nodes managed by Autopilot.
+- **Impact:** Unhealthy nodes can affect the overall availability and performance of the Vault service.
+- **Possible Causes:** 
+  - Hardware failures or resource exhaustion on nodes.
+  - Network issues preventing nodes from communicating with each other.
+  - Configuration errors or bugs in Vault.
 
+---
 
-	22. P2:<PROD>: Vault node Memory Exceeds 80%
-
+### **22. P2: <PROD>: Vault Node Memory Exceeds 80%**
+- **Query:**  
+```
 | mstats max(mem.used_percent) AS used WHERE `vault_telemetry` AND cluster=prd*vault AND (host=*) BY host span=1m
 | stats max(used) AS used BY host
 | eval Critical_Usage = if(used > 80, "Yes", "No") 
 | where Critical_Usage="Yes"
-
-	23. P2:<PROD>: Vault Raft storage io timeout
-
-index="vault-audit" "[ERROR] storage.raft: failed to heartbeat" AND "i/o timeout" host="cloud-infra-vault-prd*"
-
-	24. P2:<PROD>:  Vault raft unable to add peer
-
-index="vault-audit" "[ERROR] storage.raft: failed to appendEntries" AND "i/o timeout" host="cloud-infra-vault-prd*"
-
-	25. P2:<PROD>: Autopilot Failure Failure Tolerance is 2
-
-| mstats max(vault.autopilot.failure_tolerance.value) as count where `vault_telemetry` AND cluster="npd-vault" span=1m
-| timechart bins=1000 sum(count) AS count
-| where count < 2
-
-	26. P2:<PROD>: Vault snapshot failure
-
-| mstats latest(vault.autosnapshots.save.errors.value) as user WHERE sourcetype="hashicorp_vault_telemetry" index="vault-metrics" AND cluster=prd*vault span=1m
-
+```
+- **Purpose:** To identify any Vault nodes where memory usage exceeds 80%.
+- **Impact:** High memory usage can lead to performance degradation, increased latency, and potential crashes.
+- **Possible Causes:** 
+  - Insufficient memory allocated to the Vault instance.
+  - High load or usage patterns leading to increased memory consumption.
+  - Memory leaks in the application.
 
 ---
 
-### **Summary**  
-These queries monitor **critical metrics across non-production and production Vault clusters**, focusing on **replication, resource usage, and node health**. The goal is to ensure that Vault remains highly available, performant, and resilient to failures. By detecting issues early, such as replication delays or resource bottlenecks, administrators can proactively address them before they impact the system.
+### **23. P2: <PROD>: Vault Raft Storage I/O Timeout**
+- **Query:**  
+```
+index="vault-audit" "[ERROR] storage.raft: failed to heartbeat" AND "i/o timeout" host="cloud-infra-vault-prd*"
+```
+- **Purpose:** To check for errors related to Raft storage timeouts in Vault.
+- **Impact:** Timeouts can prevent proper synchronization and can lead to data consistency issues within the cluster.
+- **Possible Causes:** 
+  - Disk I/O performance issues.
+  - Network latency or connectivity issues affecting storage backend communication.
+  - Resource contention on the host running the Vault node.
+
+---
+
+### **24. P2: <PROD>: Vault Raft Unable to Add Peer**
+- **Query:**  
+```
+index="vault-audit" "[ERROR] storage.raft: failed to appendEntries" AND "i/o timeout" host="cloud-infra-vault-prd*"
+```
+- **Purpose:** To identify failures in adding peers to the Raft cluster.
+- **Impact:** Issues in adding peers can lead to partitioned clusters, impacting overall availability and reliability.
+- **Possible Causes:** 
+  - Network issues preventing peer communication.
+  - Resource limitations affecting node performance.
+  - Configuration errors in the Raft setup.
+
+---
+
+### **25. P2: <PROD>: Autopilot Failure - Failure Tolerance is 2**
+- **Query:**  
+```
+| mstats max(vault.autopilot.failure_tolerance.value) AS count WHERE `vault_telemetry` AND cluster="npd-vault" span=1m
+| timechart bins=1000 sum(count) AS count
+| where count < 2
+```
+- **Purpose:** To monitor the failure tolerance of Vault nodes managed by Autopilot.
+- **Impact:** A failure tolerance of less than 2 indicates that the cluster may not be resilient enough to handle node failures, risking downtime.
+- **Possible Causes:** 
+  - Insufficient nodes in the cluster.
+  - Frequent node failures leading to decreased tolerance.
+  - Configuration issues in the Autopilot setup.
+
+---
+
+### **26. P2: <PROD>: Vault Snapshot Failure**
+- **Query:**  
+```
+| mstats latest(vault.autosnapshots.save.errors.value) AS user WHERE sourcetype="hashicorp_vault_telemetry" index="vault-metrics" AND cluster=prd*vault span=1m
+```
+- **Purpose:** To monitor snapshot creation errors in the production Vault environment.
+- **Impact:** Failing to create snapshots can lead to data loss in recovery scenarios.
+- **Possible Causes:** 
+  - Resource limitations, such as disk space or I/O issues.
+  - Configuration errors related to snapshot settings.
+  - Network issues preventing communication with storage backends.
+
+---
+
+These explanations cover the purpose, impact, and possible causes for each query, helping to understand their significance in monitoring the health and performance of Vault environments.
