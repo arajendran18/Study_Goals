@@ -54,3 +54,80 @@ By restoring the **default value of 24h**, the new node had enough time to repli
 - **`vault.autopilot.last_contact_error`**: Indicates when nodes exceed the contact threshold.
 
 This configuration ensures that large datasets or slower replication processes don’t inadvertently cause nodes to leave the cluster.
+
+
+To **check and modify the Vault Autopilot configuration**, follow these steps. 
+
+### **1. Check the Current Autopilot Configuration**  
+You can view the autopilot configuration using Vault’s CLI or API.
+
+#### **Using the Vault CLI:**
+```bash
+vault operator raft autopilot get-config
+```
+This command retrieves the current configuration for the autopilot settings. You will see output similar to:
+
+```json
+Autopilot Configuration:
+  Cleanup Dead Servers: true
+  Last Contact Threshold: 1m
+  Max Servers: 5
+  Min Quorum: 3
+  Server Stale Threshold: 5m
+```
+
+- **`Cleanup Dead Servers`**: Automatically remove dead nodes.
+- **`Last Contact Threshold`**: Defines the allowed contact delay with the leader.
+- **`Server Stale Threshold`**: Marks servers as stale if not in sync for the specified period.
+
+---
+
+### **2. Modify the Autopilot Configuration**  
+To adjust parameters like **`dead-server-last-contact-threshold`**, use the following commands.
+
+#### **Using the Vault CLI:**
+```bash
+vault operator raft autopilot set-config \
+  -cleanup-dead-servers=true \
+  -last-contact-threshold=24h \
+  -server-stale-threshold=10m
+```
+
+#### **Explanation:**
+- **`-last-contact-threshold=24h`**: Increases the time allowed for nodes to sync with the leader, preventing premature removal.
+- **`-cleanup-dead-servers=true`**: Ensures that non-functional nodes are automatically cleaned up.
+
+---
+
+### **3. Verifying the Changes**
+After modifying the configuration, confirm the changes:
+
+```bash
+vault operator raft autopilot get-config
+```
+
+This should reflect the updated values.
+
+---
+
+### **4. Modifying Configuration via API (Optional)**
+If you prefer to use the Vault API:
+
+#### **API Request to Update Config:**
+```bash
+curl --header "X-Vault-Token: <your-token>" \
+     --request PUT \
+     --data '{"last_contact_threshold": "24h", "cleanup_dead_servers": true}' \
+     http://<vault-address>:8200/v1/sys/storage/raft/autopilot/config
+```
+
+This ensures the config changes take effect without needing a Vault restart.
+
+---
+
+### **Best Practices:**
+1. **Backup** the Vault state before making changes to the cluster.
+2. **Monitor metrics** after the configuration change to ensure new nodes join correctly.
+3. **Test the setup** in a staging environment before applying critical changes to production.
+
+These steps help ensure the cluster remains stable with properly tuned autopilot settings.
