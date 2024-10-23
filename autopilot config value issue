@@ -1,0 +1,56 @@
+### **Issue Overview: New Nodes Joining as Non-Voters and Leaving the Quorum**  
+This problem arises from a **misconfigured Vault autopilot parameter**—`dead-server-last-contact-threshold`. Here’s a detailed breakdown of the issue, the relevant concepts, and how adjusting this parameter resolved it.
+
+---
+
+### **Autopilot and Raft Cluster Quorum in Vault**  
+Vault uses **Raft consensus protocol** to manage high-availability clusters. Raft ensures that all cluster members (nodes) are in sync, with one elected **leader** and other **voting members** forming a quorum. Each node must sync with the leader to maintain consistency and be recognized as a **voter** in the cluster.
+
+When new nodes join, they must:
+1. **Download the Raft log data** (can be large).
+2. Sync with the current state of the cluster before becoming active voting members.
+
+If the data sync process takes too long (due to large data or network latency), the autopilot's **`dead-server-last-contact-threshold`** can mistakenly mark the new node as **unresponsive**, causing it to leave the quorum prematurely.
+
+---
+
+### **Understanding the Root Cause: `dead-server-last-contact-threshold`**  
+The **`dead-server-last-contact-threshold`** parameter defines the **maximum allowed time a follower node can be out of contact with the leader** before being marked as **dead** and removed from the cluster.
+
+- **Default value:** 24 hours (`24h`)  
+- **Misconfigured value:** 1 minute (`1m`)  
+
+In your scenario, the new node needed more than **1 minute** to replicate **7GB of Raft data** and sync with the leader. However, since the contact threshold was set to **1 minute**, the new node was marked as unresponsive before completing the sync. As a result:
+- The node joined as a **non-voter** (since it couldn’t sync on time).
+- It **left the quorum immediately**, disrupting the cluster’s stability.
+
+---
+
+### **Solution: Increasing `dead-server-last-contact-threshold` to 24h**  
+By restoring the **default value of 24h**, the new node had enough time to replicate the required data from the leader and join the quorum as a voting member without being prematurely marked as dead.
+
+- **Why 24h works:**  
+  The larger threshold ensures that even under high load or large data replication scenarios, nodes have enough time to complete the sync process. 
+
+---
+
+### **Impact of the Fix**  
+- **Stability:** With the correct threshold, new nodes can now join and stay in the cluster, contributing to the quorum.
+- **Resilience:** The cluster maintains a healthy quorum of 5 nodes, avoiding split-brain scenarios.
+- **Data Integrity:** The 24h threshold allows for consistent data replication, ensuring no data is lost or outdated during the node-joining process.
+
+---
+
+### **Best Practices for Managing Autopilot and Raft in Vault**
+1. **Monitor Data Size and Latency:** Use telemetry metrics to track Raft log sizes and node health.
+2. **Set Reasonable Thresholds:** Align parameters like `dead-server-last-contact-threshold` with your data size and replication speed.
+3. **Test New Node Joins:** Before adding new nodes in production, simulate data replication in a test environment.
+
+---
+
+### **Key Metrics to Monitor Related to Node Health:**
+- **`vault.autopilot.healthy`**: Reports if the autopilot mechanism is functioning correctly.
+- **`vault.raft.replication_time`**: Measures the time taken to replicate logs to new nodes.
+- **`vault.autopilot.last_contact_error`**: Indicates when nodes exceed the contact threshold.
+
+This configuration ensures that large datasets or slower replication processes don’t inadvertently cause nodes to leave the cluster.
