@@ -1,0 +1,71 @@
+To understand the workflow of your EK8s (Elastic Kubernetes Service) team, gather insights into **request intake, completion metrics, and complexity data**. Below is a breakdown of key questions to ask, categorized by workflow areas.
+
+---
+
+### 1. **Request Intake Process**
+- **How are requests submitted?**  
+  (e.g., Jira tickets, ServiceNow forms, emails, or chat-based requests)  
+- **What types of requests does the team handle?**  
+  (e.g., cluster creation, scaling, troubleshooting, upgrades, monitoring setup)  
+- **Is there a standardized process for intake?**  
+  (Are all requests funneled through the same system, or do they come from multiple channels?)  
+- **Do you prioritize requests? If so, how?**  
+  (e.g., based on urgency, impact, or SLAs)  
+- **What information must be included in a request for it to be actionable?**  
+  (Required fields or templates)  
+- **Who approves or assigns requests within the team?**  
+  (Are there specific roles or tools that handle this?)
+
+---
+
+### 2. **Completion Metrics and Performance Tracking**
+- **How do you measure the completion of tasks?**  
+  (Are metrics like time to resolution, average handling time, or lead time tracked?)  
+- **Which tools are used to track the status and progress of requests?**  
+  (e.g., Jira, Trello, ServiceNow)  
+- **Do you have SLAs (Service Level Agreements) for different types of tasks?**  
+  (If yes, what are the typical SLAs, and how are they monitored?)  
+- **What metrics do you report to stakeholders?**  
+  (e.g., weekly/monthly reports on open vs. closed tickets, resolution times)  
+- **Are there any dashboards or reports that show team performance?**  
+  (Are these reports automated, or do they require manual effort?)  
+- **What metrics are currently a challenge to capture accurately?**  
+
+---
+
+### 3. **Complexity Data and Workload Analysis**
+- **How do you categorize the complexity of tasks?**  
+  (e.g., high/medium/low complexity, estimated hours, or a point-based system like story points)  
+- **Do certain types of requests typically take longer to complete?**  
+  (Which ones, and why?)  
+- **How do you manage ad-hoc or unplanned requests?**  
+  (Do they affect the planned work or SLAs?)  
+- **Is there a method to identify recurring or problematic issues?**  
+  (e.g., root cause analysis or incident post-mortems)  
+- **How do you balance operational work with project-based or developmental tasks?**  
+- **What are the biggest blockers or dependencies that increase the complexity of requests?**
+
+---
+
+### 4. **Capacity Planning and Improvement Areas**
+- **How do you track individual engineer workloads?**  
+  (Are you using any tools to measure the capacity of the team?)  
+- **Are there any patterns in workload spikes?**  
+  (e.g., related to business cycles, updates, or incidents)  
+- **What processes or automation are in place to reduce repetitive tasks?**  
+- **Are there any challenges in meeting requests or maintaining SLAs?**  
+  (If yes, what changes could help improve this?)  
+- **How does the team ensure continuous improvement?**  
+  (e.g., retrospectives, feedback loops, or regular process reviews)  
+
+---
+
+### 5. **Collaboration and Communication**
+- **Who are the primary stakeholders or teams the EK8s team interacts with?**  
+- **How does the team communicate the progress or completion of tasks to stakeholders?**  
+- **Do you have any feedback mechanisms from other teams or customers?**  
+  (e.g., surveys, regular meetings, or retrospectives)  
+
+---
+
+These questions will help you map out the entire workflow, identify areas where data is missing or needs improvement, and understand how the team’s work aligns with your goals. Once you gather this information, you can analyze where support or improvements are needed to align with the team's metrics and data requirements.
