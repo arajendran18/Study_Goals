@@ -1,0 +1,21 @@
+--------------------------------------------------------------------------------------------------------------
+shared-esms-npd-us-west-2
+----------------------------------------------------------------------------------------------------------------
+Error:
+Error: creating S3 Bucket (npd-east-lambda-code-20230309205027657000000001) Public Access Block: operation error S3: PutPublicAccessBlock, https response error StatusCode: 403, RequestID: P5ZTMFZZCCFXJ8JZ, HostID: tcnQM81naS4iX4UMsqRxdXSz3Qi0rdQEc4YAMjbOuy2REjvW6Dnztd4/YBPOlD5vN3GEVCMfE+12V2oSwbx3VxQa8GdQ4GF5okRAF9o2AgM=, api error AccessDenied: User: arn:aws:iam::520849555508:user/tfe_provisioner is not authorized to perform: s3:PutBucketPublicAccessBlock on resource: "arn:aws:s3:::npd-east-lambda-code-20230309205027657000000001" with an explicit deny in a service control policy
+with module.pr-secondary.aws_s3_bucket_public_access_block.vault_license_bucket
+on modules/vault_cluster/s3_bucket.tf line 20, in resource "aws_s3_bucket_public_access_block" "vault_license_bucket":
+resource "aws_s3_bucket_public_access_block" "vault_license_bucket" {
+--------------------------------------------------------------------------------------------------------------
+shared-esms-prd-config
+-------------------------------------------------------------------------------------------------------------
+Error: error writing AWS auth backend role "auth/aws/role/app-pim-llaz-vault-sre-devops-prd-admin-prd-aws-auth-role": Error making API request. URL: PUT https://prd-esms.lllint.com/v1/auth/aws/role/app-pim-llaz-vault-sre-devops-prd-admin-prd-aws-auth-role Code: 400. Errors: * at least one bound parameter should be specified on the role
+with vault_aws_auth_backend_role.app-pim-llaz-vault-sre-devops-prd-admin-prd-aws-auth-role
+on team_pim-llaz-vault-sre-devops.tf line 16, in resource "vault_aws_auth_backend_role" "app-pim-llaz-vault-sre-devops-prd-admin-prd-aws-auth-role":
+resource "vault_aws_auth_backend_role" "app-pim-llaz-vault-sre-devops-prd-admin-prd-aws-auth-role" {
+
+Error: error writing AWS auth backend role "auth/aws/role/app-seo-prd-aws-auth-role": Error making API request. URL: PUT https://prd-esms.lllint.com/v1/auth/aws/role/app-seo-prd-aws-auth-role Code: 400. Errors: * at least one bound parameter should be specified on the role
+with vault_aws_auth_backend_role.app-seo-prd-aws-auth-role
+on team_pim-llaz-vault-seo-prd-readwrite.tf line 24, in resource "vault_aws_auth_backend_role" "app-seo-prd-aws-auth-role":
+resource "vault_aws_auth_backend_role" "app-seo-prd-aws-auth-role" {
+---------------------------------------------------------------------------------------------------------------
