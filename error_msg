@@ -1,1 +1,7 @@
 │ Error: Error making API request.││ URL: PUT https://npd-esms.lllint.com/v1/auth/aws/login│ Code: 400. Errors:││ * IAM Principal "arn:aws:sts::713755970501:assumed-role/AmazonSSMRoleForInstancesQuickSetup/i-068ca90f1240fd358" does not belong to the role "rol-flow-npd-terraform-readwrite"││   with data.vault_generic_secret.datadog,│   on secrets.tf line 57, in data "vault_generic_secret" "datadog":│   57: data "vault_generic_secret" "datadog" {
+
+
+Error: error writing IdentityGroupAlias to "d95554ae-b4f5-47bc-b12f-d4046975f4f5": Error making API request. URL: PUT https://npd-esms.lllint.com/v1/identity/group-alias Code: 400. Errors: * combination of mount and group alias name is already in use
+with vault_identity_group_alias.pim_llaz_vault_pdam_npd_readonly
+on team_pim-llaz-vault-pdam-npd-readonly.tf line 11, in resource "vault_identity_group_alias" "pim_llaz_vault_pdam_npd_readonly":
+resource "vault_identity_group_alias" "pim_llaz_vault_pdam_npd_readonly" {
