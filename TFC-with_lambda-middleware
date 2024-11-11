@@ -1,0 +1,187 @@
+Here is a **detailed step-by-step guide** to achieve **customized Microsoft Teams notifications using AWS Lambda as middleware for Terraform Cloud (TFC) alerts**:
+
+---
+
+### **Prerequisites:**
+Before starting, make sure you have:
+1. An **AWS account** with permissions to create and manage Lambda functions and API Gateway.
+2. A **Terraform Cloud** workspace with **webhook notification** capabilities.
+3. A **Microsoft Teams channel** with an **Incoming Webhook URL** set up (This will be used to send the notifications).
+
+---
+
+### **Step 1: Set Up the AWS Lambda Function**
+#### 1.1 Create a Lambda Function in AWS
+1. Go to the **AWS Lambda Console** (https://console.aws.amazon.com/lambda).
+2. Click **Create function**.
+3. Select **Author from Scratch**.
+4. Set a **Function name** like `TFC-Teams-Notifier`.
+5. Select **Python 3.x** as the runtime (You can choose other languages like Node.js if preferred).
+6. Under **Permissions**, choose **Create a new role with basic Lambda permissions**.
+   - This role will automatically allow Lambda to be triggered, but additional permissions will be configured later if needed.
+7. Click **Create function**.
+
+#### 1.2 Set Up the Execution Role
+1. After creating the function, go to the **Permissions** section.
+2. Attach a policy that allows Lambda to access the internet (for calling the Microsoft Teams webhook).
+   - You can use the **AWSLambdaBasicExecutionRole** policy for logging to CloudWatch and **AWSLambdaVPCAccessExecutionRole** (if using VPC).
+3. Ensure your Lambda function has the **internet access** it needs to call external web services like the Microsoft Teams webhook URL.
+
+---
+
+### **Step 2: Write Lambda Code to Process TFC Alerts**
+#### 2.1 Prepare the Lambda Function to Receive and Process TFC Webhooks
+1. Go to the **Lambda Console**.
+2. Open the function you created (`TFC-Teams-Notifier`).
+3. In the **Function code** editor, replace the default code with the following:
+
+```python
+import json
+import urllib3
+
+# Initialize HTTP client
+http = urllib3.PoolManager()
+
+# Microsoft Teams webhook URL
+TEAMS_WEBHOOK_URL = "YOUR_TEAMS_WEBHOOK_URL"  # Replace with your actual Teams webhook URL
+
+def lambda_handler(event, context):
+    # Parse the incoming TFC webhook payload
+    payload = json.loads(event['body'])
+
+    # Extract relevant details from TFC payload
+    workspace_name = payload.get("workspace_name", "Unknown Workspace")
+    run_id = payload.get("run_id", "N/A")
+    message = payload.get("message", "No message provided")
+    timestamp = payload.get("timestamp", "N/A")
+
+    # Create the Teams message card in Adaptive Card format
+    teams_message = {
+        "type": "message",
+        "attachments": [
+            {
+                "contentType": "application/vnd.microsoft.card.adaptive",
+                "content": {
+                    "type": "AdaptiveCard",
+                    "version": "1.2",
+                    "body": [
+                        {
+                            "type": "TextBlock",
+                            "size": "Large",
+                            "weight": "Bolder",
+                            "text": "Terraform Cloud Alert: Run Failure"
+                        },
+                        {
+                            "type": "TextBlock",
+                            "text": f"Workspace: {workspace_name}",
+                            "wrap": True
+                        },
+                        {
+                            "type": "TextBlock",
+                            "text": f"Error: {message}",
+                            "wrap": True,
+                            "color": "attention"
+                        },
+                        {
+                            "type": "TextBlock",
+                            "text": f"Run ID: {run_id}",
+                            "wrap": True
+                        },
+                        {
+                            "type": "TextBlock",
+                            "text": f"Timestamp: {timestamp}",
+                            "wrap": True
+                        }
+                    ]
+                }
+            }
+        ]
+    }
+
+    # Send the formatted message to Microsoft Teams
+    encoded_message = json.dumps(teams_message).encode('utf-8')
+    response = http.request(
+        'POST',
+        TEAMS_WEBHOOK_URL,
+        body=encoded_message,
+        headers={'Content-Type': 'application/json'}
+    )
+
+    # Return success or failure message
+    if response.status == 200:
+        return {
+            'statusCode': 200,
+            'body': json.dumps('Message sent to Microsoft Teams successfully')
+        }
+    else:
+        return {
+            'statusCode': response.status,
+            'body': json.dumps('Failed to send message to Microsoft Teams')
+        }
+```
+
+#### 2.2 Modify the Code
+- **Replace `YOUR_TEAMS_WEBHOOK_URL`** with the actual webhook URL you generated for your Microsoft Teams channel.
+- Customize the message format in the `teams_message` section if necessary. The above code creates a simple card with:
+   - **Workspace Name**
+   - **Run ID**
+   - **Error Message** (highlighted in red if critical)
+   - **Timestamp**
+
+#### 2.3 Save the Code
+Click **Deploy** to save the changes.
+
+---
+
+### **Step 3: Configure API Gateway to Trigger Lambda**
+To allow **Terraform Cloud** to send webhooks to Lambda, you need an HTTP endpoint.
+
+#### 3.1 Create API Gateway
+1. Go to the **API Gateway Console** (https://console.aws.amazon.com/apigateway).
+2. Click **Create API** and choose **HTTP API**.
+3. Click **Build** under HTTP API.
+4. Name the API (e.g., `TFC-Webhook-API`).
+5. Under **Configure routes**, add a **POST** route (`/tfc-webhook`).
+6. Select the Lambda function (`TFC-Teams-Notifier`) as the integration.
+7. Deploy the API and take note of the **Invoke URL** for later (e.g., `https://<api-id>.execute-api.<region>.amazonaws.com/tfc-webhook`).
+
+---
+
+### **Step 4: Configure Terraform Cloud to Use Lambda URL**
+1. In **Terraform Cloud**, go to your workspace.
+2. Navigate to **Settings > Notifications**.
+3. Add a **Webhook notification** and provide the **API Gateway URL** you obtained earlier.
+   - The URL will look like `https://<api-id>.execute-api.<region>.amazonaws.com/tfc-webhook`.
+4. Configure the notification settings to trigger on events such as **Run Failures** or **Run Success**, based on your needs.
+
+---
+
+### **Step 5: Test the Integration**
+1. Create an **intentional error** in Terraform Cloud (e.g., a syntax error in your Terraform configuration).
+2. Check your **Microsoft Teams channel** for the formatted alert card.
+   - The Teams card should display the workspace name, error message, run ID, and timestamp.
+
+---
+
+### **Step 6: Monitor and Refine**
+1. **Check CloudWatch Logs**: Enable CloudWatch logging in your Lambda function to capture any errors or issues with the message formatting.
+2. **Test More Scenarios**: Trigger different types of alerts (e.g., successful runs or warnings) to ensure the Lambda code processes them correctly.
+3. **Customize the Card Further**: You can enhance the card with more information, buttons, or different visual formats based on your needs.
+
+---
+
+### **Optional Enhancements**
+1. **Severity Tagging**: Modify the Lambda code to check the error message and assign severity tags, such as **Critical** or **Warning**.
+2. **Error Handling**: Add logic to handle cases where the webhook URL is unreachable or when there are issues with the payload format.
+3. **Logging and Alerts**: Use CloudWatch to log incoming requests and errors, so you can quickly troubleshoot issues.
+
+---
+
+### **Summary:**
+By following the above steps, you’ll set up AWS Lambda as middleware to process Terraform Cloud alerts and send custom notifications to Microsoft Teams. This process involves:
+1. Writing Lambda code to handle webhook payloads.
+2. Configuring API Gateway to expose Lambda as an HTTP endpoint.
+3. Configuring Terraform Cloud to trigger Lambda notifications.
+4. Testing and refining the integration for the best user experience.
+
+This system enables real-time, rich notifications about Terraform Cloud events directly in Microsoft Teams, making it easier to monitor your infrastructure.
