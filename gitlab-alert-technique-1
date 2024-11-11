@@ -1,0 +1,140 @@
+To achieve this setup, you can use GitLab CI/CD pipelines to automatically send notifications to a Microsoft Teams channel whenever a merge request (MR) triggers a pipeline and it fails during a merge to the main branch. Here’s how you can implement this process:
+
+### Prerequisites
+1. **Microsoft Teams Webhook URL**: You need an Incoming Webhook URL set up in the Teams channel where notifications will be posted.
+2. **GitLab Project with CI/CD**: A GitLab project where your code is managed and where GitLab CI/CD is configured.
+
+### Steps to Configure GitLab to Notify Teams on Pipeline Failures
+
+#### Step 1: Configure Incoming Webhook in Microsoft Teams
+1. Open your Microsoft Teams channel and select **Connectors**.
+2. Search for **Incoming Webhook** and add it to the channel.
+3. Configure the webhook with a name and copy the **Webhook URL**.
+4. Save this URL; it will be used in the GitLab pipeline script.
+
+#### Step 2: Create a GitLab CI/CD Pipeline File (`.gitlab-ci.yml`)
+Add the following steps to your `.gitlab-ci.yml` file to send notifications to Teams if a pipeline fails.
+
+1. **Define a `failure_notification` job** that only triggers on pipeline failures.
+2. Use `rules` to run the notification only for merge requests and merges into the `main` branch.
+3. Implement a script to format the error message and send it to Teams using the webhook URL.
+
+#### Example `.gitlab-ci.yml` Configuration
+
+```yaml
+stages:
+  - test
+  - notify_failure
+
+# Example job to simulate pipeline test (replace with actual test jobs)
+test_job:
+  stage: test
+  script:
+    - echo "Running tests..."
+    - exit 1  # Simulating a failure for demonstration; remove this in real jobs
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" || $CI_COMMIT_BRANCH == "main"'
+
+# Job to notify Microsoft Teams on failure
+failure_notification:
+  stage: notify_failure
+  script:
+    - |
+      if [[ "$CI_COMMIT_BRANCH" == "main" ]] || [[ "$CI_PIPELINE_SOURCE" == "merge_request_event" ]]; then
+        # Define the Teams message payload
+        TEAMS_MESSAGE=$(cat <<EOF
+        {
+          "type": "message",
+          "attachments": [
+            {
+              "contentType": "application/vnd.microsoft.card.adaptive",
+              "content": {
+                "type": "AdaptiveCard",
+                "version": "1.2",
+                "body": [
+                  {
+                    "type": "TextBlock",
+                    "size": "Large",
+                    "weight": "Bolder",
+                    "text": "GitLab Pipeline Failure Notification"
+                  },
+                  {
+                    "type": "TextBlock",
+                    "text": "Project: $CI_PROJECT_NAME",
+                    "wrap": true
+                  },
+                  {
+                    "type": "TextBlock",
+                    "text": "Branch: $CI_COMMIT_REF_NAME",
+                    "wrap": true
+                  },
+                  {
+                    "type": "TextBlock",
+                    "text": "Pipeline ID: $CI_PIPELINE_ID",
+                    "wrap": true
+                  },
+                  {
+                    "type": "TextBlock",
+                    "text": "Merge Request: $CI_MERGE_REQUEST_TITLE",
+                    "wrap": true
+                  },
+                  {
+                    "type": "TextBlock",
+                    "text": "Status: FAILED",
+                    "wrap": true,
+                    "color": "attention"
+                  },
+                  {
+                    "type": "TextBlock",
+                    "text": "Triggered by: $GITLAB_USER_NAME",
+                    "wrap": true
+                  },
+                  {
+                    "type": "TextBlock",
+                    "text": "URL: [View Pipeline]($CI_PIPELINE_URL)",
+                    "wrap": true
+                  }
+                ]
+              }
+            }
+          ]
+        }
+EOF
+        )
+
+        # Send the message to Teams
+        curl -H "Content-Type: application/json" -d "$TEAMS_MESSAGE" "${TEAMS_WEBHOOK_URL}"
+      fi
+  allow_failure: true
+  rules:
+    - if: '$CI_JOB_STATUS == "failed"'  # Only run if the previous job fails
+```
+
+#### Explanation of Configuration
+
+1. **`test_job`**: This is a placeholder job where your tests would normally run. If any test job fails (simulated here with `exit 1`), it triggers the `failure_notification` job.
+   
+2. **`failure_notification` job**:
+   - Uses the **Adaptive Card format** to structure the message for Teams.
+   - Populates dynamic values like `$CI_PROJECT_NAME`, `$CI_COMMIT_REF_NAME`, `$CI_PIPELINE_ID`, `$CI_MERGE_REQUEST_TITLE`, `$CI_PIPELINE_URL`, and `$GITLAB_USER_NAME`.
+   - Sends the notification **only when a pipeline fails** on the main branch or from a merge request.
+   - **Rules and Triggers**: This job triggers when the pipeline status is `failed`, ensuring notifications are sent only on failures.
+
+3. **Webhook URL**: Replace `"${TEAMS_WEBHOOK_URL}"` with your actual Microsoft Teams webhook URL.
+
+#### Step 3: Set up the Webhook URL in GitLab CI/CD Variables
+To keep your webhook URL secure:
+1. Go to **Settings > CI/CD** in GitLab.
+2. Under **Variables**, add a new variable named `TEAMS_WEBHOOK_URL` and set the value to your Teams webhook URL.
+3. Make sure the variable is **protected** and **masked** for security.
+
+#### Step 4: Test the Integration
+1. Trigger a **merge request** or **merge to the main branch** in GitLab with an intentional error (e.g., fail a test).
+2. Verify that the notification is sent to the Microsoft Teams channel if the pipeline fails.
+
+#### Optional Improvements
+- **Filter by Severity**: Add logic to notify on specific errors only, such as critical failures.
+- **Add Retry Logic**: Retry the notification in case the network request fails.
+- **Detailed Error Logging**: Log failures in the Teams notification for easier debugging.
+
+This setup provides an automated way to notify your team in Microsoft Teams whenever a pipeline fails, ensuring prompt awareness of issues in the codebase.
