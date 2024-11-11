@@ -1,0 +1,57 @@
+To set up **Microsoft Teams notifications for Terraform Cloud (TFC) pipeline failures**, you can leverage TFC’s notifications and integrate them into Teams via a webhook. This approach allows your team to get timely alerts in a centralized location that supports collaborative discussion and prioritization.
+
+Here’s a step-by-step plan to get it done:
+
+### Step 1: Create a Microsoft Teams Webhook
+1. In Microsoft Teams, go to the **channel** where you want to receive TFC notifications.
+2. Click on **More Options** (the three dots) next to the channel name, then select **Connectors**.
+3. Search for **Incoming Webhook** and add it.
+4. Provide a name for the webhook (e.g., “Terraform Cloud Alerts”) and select an image if desired.
+5. Click **Create** and copy the webhook URL provided. You’ll use this URL in Terraform Cloud to send notifications to Teams.
+
+### Step 2: Configure Notifications in Terraform Cloud
+1. Go to **Terraform Cloud** and navigate to your **Workspace** (or organization if setting it at that level).
+2. Under **Settings**, choose **Notifications**.
+3. Click **Add Notification Configuration**.
+4. Select **Webhook** as the notification type.
+5. In the URL field, paste the Microsoft Teams webhook URL you copied in Step 1.
+6. Configure the **Trigger Conditions** for notifications. You can select options like:
+   - “Run Failed” to notify your team of any pipeline failure.
+   - Optionally, “Run Completed” if you want alerts for other pipeline outcomes.
+7. Save the notification configuration.
+
+### Step 3: Customize the Message Format for Teams (Optional)
+Terraform Cloud sends JSON payloads to webhooks, but you can format the JSON for more readable and actionable messages in Microsoft Teams. To customize the messages, you can use an **Azure Logic App** or **AWS Lambda** function as a middleware to reformat and enrich the payload.
+
+1. **Create a Middleware (Optional):**
+   - Use a lightweight cloud function (Azure Logic App or AWS Lambda) to intercept the TFC webhook payload.
+   - Format the payload to include relevant details like:
+     - Workspace name, run ID, and error details.
+     - Severity level (L1 or L3) if possible.
+   - Send the formatted message to the Microsoft Teams webhook URL.
+
+2. **Define Severity Levels in the Middleware:**
+   - Add logic to classify the severity level (L1, L3, etc.) based on keywords in the error message or the affected resources.
+   - Append the severity level to the Teams message to indicate the urgency of the issue.
+
+### Step 4: Test the Integration
+1. Trigger a TFC pipeline failure (e.g., by running a configuration with an intentional syntax error).
+2. Check Microsoft Teams to verify the notification format, content, and overall functionality.
+
+### Step 5: Define Team Response Workflow
+1. **Add Response Guidelines** to the message format (for example, "L1 issues should be addressed by on-call DevOps team").
+2. Update internal documentation to include how to triage and handle different levels of Terraform Cloud alerts.
+
+### Step 6: Monitor and Optimize
+1. Gather feedback from the team on the alerts' usefulness and frequency.
+2. Adjust the notification settings or middleware logic to avoid “alert fatigue” and only send actionable alerts.
+
+### Summary of the Plan:
+1. **Set up** an Incoming Webhook in Microsoft Teams.
+2. **Add** a TFC webhook notification with the Teams webhook URL.
+3. (Optional) **Format** the alert message via middleware for clarity and urgency.
+4. **Test** the integration by triggering a TFC failure.
+5. Define a **response workflow** based on the severity in Teams.
+6. **Monitor and adjust** the setup for effectiveness.
+
+With this setup, your team will receive actionable, real-time alerts on TFC pipeline failures in Microsoft Teams, helping you quickly assess and delegate fixes based on priority.
