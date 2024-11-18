@@ -1,0 +1,97 @@
+To integrate Terraform Cloud with Splunk and configure it to send notifications to Splunk, you can follow these steps:
+
+---
+
+### **1. Set Up Splunk HTTP Event Collector (HEC)**
+
+1. **Enable HEC in Splunk**:
+   - Log in to your Splunk instance.
+   - Go to **Settings > Data Inputs > HTTP Event Collector (HEC)**.
+   - Click **New Token** to create a new HEC endpoint.
+   - Configure the token with a meaningful name (e.g., `TerraformCloudNotifications`).
+   - Assign it to an appropriate index or create a new one for Terraform Cloud logs.
+   - Copy the generated HEC token and note the Splunk HEC URL (e.g., `https://<splunk-host>:8088`).
+
+---
+
+### **2. Configure Splunk Index** (if required)
+   - Ensure the index specified during the HEC setup exists.
+   - Go to **Settings > Indexes** and create a new index if needed.
+
+---
+
+### **3. Set Up Terraform Cloud Notification**  
+
+Terraform Cloud supports notifications for various events like runs, states, and costs.
+
+1. **Go to Your Terraform Cloud Workspace**:
+   - Navigate to the **Settings** tab of your workspace.
+   - Select **Notifications** from the menu.
+
+2. **Add a New Notification Configuration**:
+   - Click **Add a Notification Configuration**.
+   - Choose **Webhooks** as the notification destination.
+   - Provide the Splunk HEC URL (`https://<splunk-host>:8088/services/collector/event`).
+   - Add headers to include your Splunk HEC token:
+     - **Header Name**: `Authorization`
+     - **Header Value**: `Splunk <HEC_TOKEN>`
+   - Set the triggers based on your needs (e.g., `Run: Completed`, `Run: Errored`).
+
+3. **Test the Configuration**:
+   - Use the **Send Test Notification** feature to ensure the integration is working.
+
+---
+
+### **4. Configure Splunk to Parse Terraform Cloud Logs**
+
+1. **Access Splunk Search and Reporting App**:
+   - Navigate to **Search & Reporting** in Splunk.
+
+2. **Write a Search Query**:
+   - Use the index specified for Terraform Cloud logs (e.g., `index="terraform_cloud_logs"`).
+   - Parse fields in the logs using Splunk's field extraction if required.
+   - Example:
+     ```spl
+     index="terraform_cloud_logs"
+     | spath
+     | table time, message, run_id, status
+     ```
+
+3. **Create Alerts or Dashboards in Splunk**:
+   - Use Splunk's **Alert** functionality to trigger notifications when specific conditions are met (e.g., failed runs or errors).
+   - Build dashboards for monitoring Terraform Cloud activities.
+
+---
+
+### **5. Automate with Terraform (Optional)**
+
+You can automate the setup of Terraform Cloud webhooks using Terraform itself.
+
+1. **Add a Resource for Terraform Cloud Webhooks**:
+   ```hcl
+   resource "tfe_notification_configuration" "splunk_webhook" {
+     workspace_id = "<workspace_id>"
+     name         = "Splunk Webhook"
+     destination_type = "webhook"
+     url          = "https://<splunk-host>:8088/services/collector/event"
+     triggers     = ["run:completed", "run:errored"]
+
+     headers = {
+       "Authorization" = "Splunk <HEC_TOKEN>"
+     }
+   }
+   ```
+
+2. **Apply the Configuration**:
+   - Run `terraform apply` to set up the webhook.
+
+---
+
+### **6. Verify the Integration**
+
+- Trigger a run or event in Terraform Cloud to ensure notifications are sent to Splunk.
+- Check Splunk's logs for entries corresponding to Terraform Cloud notifications.
+
+---
+
+By following these steps, you will have Terraform Cloud integrated with Splunk, allowing notifications and logs to flow into Splunk for monitoring and alerting.
