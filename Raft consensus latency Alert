@@ -1,0 +1,183 @@
+### **Detailed SOP for Resolving Raft Consensus Latency High Alert in Vault**
+
+The **Raft Consensus Latency High** alert signals delays in the Raft consensus mechanism that Vault uses to synchronize data across nodes. This issue can disrupt cluster stability, degrade performance, and risk data integrity.
+
+---
+
+### **Step-by-Step SOP**
+
+#### **Step 1: Acknowledge and Verify the Alert**
+
+##### **Purpose**:
+Ensure the alert is genuine and assess the severity and potential impact.
+
+##### **Actions**:
+1. **Acknowledge the Alert**:
+   - Acknowledge the alert in your monitoring system (e.g., CloudWatch).
+   - Notify stakeholders if the alert impacts critical services.
+
+2. **Verify Metrics**:
+   - Use CloudWatch to review `vault.raft.replication.latency` metrics.
+   - Confirm latency values exceed the threshold (e.g., >100ms).
+
+3. **Review Logs**:
+   - Check logs for errors related to Raft consensus:
+     ```bash
+     tail -f /var/log/vault.log
+     ```
+   - Look for messages like:
+     - `Raft heartbeat timeout`
+     - `Failed to apply log entry`
+   - Use log aggregation tools (e.g., CloudWatch Logs Insights) to filter for relevant entries:
+     ```
+     fields @timestamp, @message
+     | filter @message like /Raft|heartbeat/
+     ```
+
+---
+
+#### **Step 2: Assess Cluster Health**
+
+##### **Purpose**:
+Identify the state of the cluster and locate unhealthy nodes.
+
+##### **Actions**:
+1. **List Raft Peers**:
+   - Run the following command:
+     ```bash
+     vault operator raft list-peers
+     ```
+   - Review the output for:
+     - Leader status.
+     - Follower health.
+     - Nodes marked as `unhealthy` or `stale`.
+
+   **Example Output**:
+   ```
+   Node            Address               State      Voter
+   vault-1         10.0.0.1:8201         Leader     true
+   vault-2         10.0.0.2:8201         Follower   true
+   vault-3         10.0.0.3:8201         Unhealthy  true
+   ```
+
+2. **Check Cluster Leadership**:
+   - Identify the leader node.
+   - If the leader is slow or unresponsive, initiate a re-election:
+     ```bash
+     vault operator step-down
+     ```
+
+3. **Verify Node Connectivity**:
+   - Check network latency between nodes using `ping` or `traceroute`:
+     ```bash
+     ping 10.0.0.2
+     ```
+   - Verify latency is within acceptable limits (e.g., <50ms for same-region nodes).
+
+4. **Check Resource Usage**:
+   - Review resource metrics in CloudWatch for each node:
+     - CPUUtilization
+     - MemoryUtilization
+     - DiskReadOps / DiskWriteOps
+
+---
+
+#### **Step 3: Investigate and Mitigate Immediate Causes**
+
+##### **a. Network Latency**
+- **Cause**: Poor network performance or misconfigured routing between nodes.
+- **Resolution**:
+  - Check VPC security groups and NACLs to ensure proper node communication.
+  - Use AWS Direct Connect or VPC Peering for inter-region connectivity.
+  - For AWS regions, ensure inter-region latency is minimal (<100ms).
+
+##### **b. Resource Constraints**
+- **Cause**: Nodes lack sufficient CPU, memory, or IOPS to handle the load.
+- **Resolution**:
+  - Scale up instance types (e.g., move from t3.medium to m5.large).
+  - Use CloudWatch to monitor and verify resource improvements.
+
+##### **c. Disk I/O Latency**
+- **Cause**: Raft operations require high-performance disk I/O for log replication.
+- **Resolution**:
+  - Use high-performance storage like AWS gp3 or io2 volumes.
+  - Ensure disk IOPS match Vault’s workload.
+
+---
+
+#### **Step 4: Optimize Raft Configuration**
+
+##### **Purpose**:
+Adjust Raft settings to minimize latency.
+
+##### **Actions**:
+1. **Tune Heartbeat Timeout**:
+   - Reduce heartbeat timeout to detect and recover from slow nodes faster:
+     ```bash
+     vault operator raft configuration-set -heartbeat-timeout=100ms
+     ```
+
+2. **Log Compaction**:
+   - Remove stale Raft logs to reduce replication overhead:
+     ```bash
+     vault operator raft snapshot save /path/to/snapshot
+     ```
+
+---
+
+#### **Step 5: Long-Term Mitigation**
+
+##### **a. Optimize Cluster Topology**
+- Colocate cluster nodes in the same region to minimize network latency.
+- Maintain an odd number of nodes (3 or 5) for efficient quorum-based consensus.
+
+##### **b. Use Performance Replication**
+- Offload read-heavy workloads to a performance replication cluster.
+
+##### **c. Set Up Proactive Monitoring**
+- Configure CloudWatch alarms for:
+  - `vault.raft.replication.latency`
+  - Node CPU and memory utilization.
+  - Disk I/O performance.
+
+---
+
+#### **Step 6: Validate Resolution**
+
+##### **Purpose**:
+Ensure the alert no longer triggers and operations are stable.
+
+##### **Actions**:
+1. **Monitor Metrics**:
+   - Check Raft replication latency in CloudWatch.
+   - Ensure values are within acceptable thresholds (e.g., <10ms for intra-region).
+
+2. **Verify Cluster Health**:
+   - List Raft peers and confirm all nodes are `healthy`:
+     ```bash
+     vault operator raft list-peers
+     ```
+
+3. **Test Client Operations**:
+   - Perform read and write operations on the Vault cluster.
+   - Verify no errors or delays in responses.
+
+---
+
+### **Example Scenario**
+**Alert**: Raft Consensus Latency High  
+**Root Cause**: Inter-region network latency due to a misconfigured security group blocking traffic between nodes.  
+
+**Steps Taken**:
+1. Verified alert in CloudWatch and identified high replication latency.
+2. Used `vault operator raft list-peers` to find that one node was `unhealthy`.
+3. Ran `ping` and identified high network latency between nodes in different regions.
+4. Updated security group rules to allow communication between nodes.
+5. Monitored metrics and confirmed latency returned to normal levels (<10ms).
+
+---
+
+### **Key Considerations**
+1. Always address Raft latency issues promptly to prevent cluster instability.
+2. Ensure proactive monitoring to detect issues before they escalate.
+3. Document root causes and solutions to build an effective incident response plan.
