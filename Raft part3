@@ -1,0 +1,165 @@
+Here’s a **Standard Operating Procedure (SOP)** to handle high **Raft consensus latency** alerts in Vault:
+
+---
+
+## **Standard Operating Procedure (SOP) for Handling Raft Consensus Latency High Alerts in Vault**
+
+### **Objective**
+To identify, troubleshoot, and resolve high Raft consensus latency in Vault, ensuring optimal cluster performance and high availability.
+
+### **Scope**
+This SOP applies to HashiCorp Vault deployed with Raft storage backend (either integrated storage or a distributed backend like Consul) in a high-availability (HA) setup.
+
+---
+
+### **Pre-Requisite**
+1. Administrative access to Vault UI, Vault CLI, and the system where Vault is running.
+2. Access to monitoring tools (e.g., Prometheus, Grafana, CloudWatch) for Vault metrics.
+3. Access to Vault logs and system resource metrics (e.g., CPU, memory, disk usage).
+4. Basic knowledge of Vault architecture and Raft consensus.
+
+---
+
+### **Steps to Resolve Raft Consensus Latency High Alerts**
+
+---
+
+### **Step 1: Verify the Alert**
+- **Action**: Confirm that the alert for "Raft consensus latency high" is valid and active.
+  - Review the specific alert details such as the timestamp, affected node(s), and the exact threshold crossed.
+  - Check if the alert is ongoing or intermittent, and assess the frequency of occurrence.
+
+---
+
+### **Step 2: Check Vault Metrics for Raft Latency**
+- **Action**: Review Vault’s **Raft consensus** metrics.
+  - Navigate to Vault's **metrics endpoint** (if configured) or Prometheus/Grafana (if integrated).
+  - Key metrics to look for:
+    - `raft_heartbeat_duration_seconds`: Time taken to send Raft heartbeats.
+    - `raft_commit_duration_seconds`: Time taken to commit data to the Raft log.
+  - **Threshold**: Investigate if these metrics exceed acceptable values (e.g., >1s).
+
+- **Tools**: Vault UI (Metrics), Prometheus, Grafana
+
+---
+
+### **Step 3: Verify Network Latency Between Vault Nodes**
+- **Action**: Test the network performance between Vault nodes.
+  - Ping each Vault node from other nodes to check network latency.
+  - Use tools like **iperf** to measure bandwidth and check for packet loss or high latency.
+  
+- **Threshold**: Latency above **50ms** between nodes can cause Raft consensus delays.
+- **Outcome**: Ensure network reliability and low latency across nodes. Consider placing nodes in the same region or availability zone to reduce network latency.
+
+- **Tools**: `ping`, `iperf`, Cloud provider’s network diagnostics.
+
+---
+
+### **Step 4: Check System Resource Utilization on Vault Nodes**
+- **Action**: Monitor system resources on Vault nodes (CPU, Memory, Disk).
+  - Run resource monitoring commands:
+    - `htop` or `top` for CPU and memory usage.
+    - `iostat` or `vmstat` for disk I/O.
+  - Ensure Vault nodes are not overloaded.
+  - Verify that there is sufficient **free memory** and **CPU** for Vault to handle Raft operations efficiently.
+  
+- **Threshold**: CPU usage > 80%, Memory utilization > 85%, or Disk I/O latency > 100ms can lead to performance degradation.
+  
+- **Outcome**: Ensure each node has adequate resources (e.g., sufficient vCPUs, memory, and fast disk storage). Scale your instances if needed.
+
+- **Tools**: `htop`, `top`, `iostat`, `vmstat`, Cloud monitoring tools.
+
+---
+
+### **Step 5: Verify Disk Performance for Raft Logs**
+- **Action**: Check the disk performance where Raft logs are stored.
+  - If using a **file storage backend**, ensure that disks are fast enough (preferably SSDs).
+  - Verify there is **enough disk space** and that there are no disk bottlenecks.
+  
+- **Outcome**: Optimize storage performance by ensuring **low disk latency** and adequate space for Raft logs.
+
+- **Tools**: `iostat`, Cloud monitoring tools.
+
+---
+
+### **Step 6: Adjust Raft Configuration (Heartbeat and Election Timeout)**
+- **Action**: Review and adjust the Raft configuration to reduce consensus latency.
+  - Modify the `raft_heartbeat_timeout` and `raft_election_timeout` parameters in the Vault configuration to optimize performance.
+  
+  **Example**:
+  ```hcl
+  disable_mlock = true
+  raft_heartbeat_timeout = "500ms"
+  raft_election_timeout = "1s"
+  ```
+
+- **Outcome**: A lower **election timeout** (e.g., 1s) and **heartbeat timeout** (e.g., 500ms) can reduce Raft latency and increase the responsiveness of the Vault cluster.
+
+- **Tools**: Vault configuration file (`vault.hcl`)
+
+---
+
+### **Step 7: Check Raft Cluster Health**
+- **Action**: Verify that all Vault nodes are healthy and participating in the Raft consensus.
+  - Use the Vault CLI or API to check the status of the Raft cluster.
+  - **Command**:
+    ```bash
+    vault status
+    ```
+  - Ensure that the **leader** and **followers** are in sync and there are no **unresolved issues**.
+  
+- **Outcome**: If any node is out of sync or lagging, investigate and resolve the issue.
+
+---
+
+### **Step 8: Review Vault’s Autopilot Configuration (if applicable)**
+- **Action**: If using **Autopilot**, ensure it is properly configured to handle failovers and leader elections.
+  - Check the `autopilot_stabilization_time` setting to avoid frequent leader re-elections.
+  - Ensure that the Vault cluster is set to **automatically recover** when a node fails or becomes unreachable.
+  
+- **Example**:
+  ```hcl
+  autopilot_stabilization_time = "30s"
+  ```
+
+- **Outcome**: Proper Autopilot configuration will help reduce unnecessary leader elections, thereby improving consensus latency.
+
+---
+
+### **Step 9: Scale the Vault Cluster (If Needed)**
+- **Action**: If the cluster is under-provisioned or lacking enough nodes, consider adding more nodes.
+  - A **minimum of 3 nodes** is required for a resilient Raft cluster.
+  - Adding **5 nodes** (in odd numbers) is recommended for high availability and fault tolerance.
+  
+- **Outcome**: Scaling the cluster ensures better performance and faster elections.
+
+---
+
+### **Step 10: Rebalance or Restart Nodes (If Necessary)**
+- **Action**: If a node is showing excessive latency or if leader election issues persist:
+  - Consider restarting the affected node(s) or performing a **leader re-election** by stopping the current leader.
+  - **Rebalance** the cluster if one node is handling more requests than others.
+  
+- **Outcome**: Rebalancing and restarting nodes can help resolve temporary glitches and re-align the cluster.
+
+---
+
+### **Step 11: Monitor for Recurrence**
+- **Action**: After performing all the above steps, continue monitoring Vault metrics for Raft latency.
+  - Set up **alert thresholds** based on your environment to catch future issues before they cause significant impact.
+
+- **Tools**: Prometheus, Grafana, Vault UI, Cloud Monitoring
+
+---
+
+### **Step 12: Contact HashiCorp Support (If Needed)**
+- If the issue persists despite following the above steps, contact **HashiCorp Support** for further assistance, particularly if you suspect bugs or advanced configuration issues.
+
+---
+
+### **Summary**
+This SOP outlines the steps to troubleshoot and resolve high Raft consensus latency alerts in Vault. The steps focus on reviewing and optimizing the Vault cluster’s network, system resources, disk performance, and Raft configuration. Ensuring an optimal Vault configuration will lead to improved Raft consensus performance and cluster stability.
+
+---
+
+By following these steps, you can effectively manage and resolve high Raft consensus latency alerts in Vault.
