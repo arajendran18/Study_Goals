@@ -1,0 +1,107 @@
+### **Checklist for Testing the ServiceNow Catalog Form**
+
+Below is a comprehensive checklist to help you test all aspects of the implemented ServiceNow form. This ensures the form functions as expected and meets your requirements.
+
+---
+
+### **1. Basic Accessibility**
+- [ ] Verify the form loads correctly in the test environment using the provided URL.
+- [ ] Confirm all fields are visible and accessible to the user.
+
+---
+
+### **2. Field-Level Functionality**
+#### **Environment Field**
+- [ ] Verify the "Environment" field exists with the dropdown options "Prod" and "Non-Prod".
+- [ ] Ensure selecting "Prod" displays the appropriate severity levels: **Critical, High, Medium**.
+- [ ] Ensure selecting "Non-Prod" displays the appropriate severity levels: **High, Medium**.
+
+#### **Severity Field**
+- [ ] Verify the severity dropdown dynamically updates based on the "Environment" selection.
+- [ ] Test if invalid combinations (e.g., selecting "Critical" for "Non-Prod") are restricted.
+
+#### **Urgency Field**
+- [ ] Check if the "Urgency" field replaces the "Business Priority" field.
+- [ ] Ensure the urgency options **Critical, High, Medium** are available.
+- [ ] Confirm the definitions (e.g., Critical, High, Medium) are clear in the popup when a selection is made.
+    - Example:
+      - Critical: *Critical system experiencing major outage with a major business impact.*
+      - High: *Major issue impacting a small group of users where a workaround is in place.*
+      - Medium: *Minor issue with a workaround in place.*
+
+#### **Business Impact Field**
+- [ ] Verify the "Business Impact, if not addressed" field exists and is mandatory.
+
+#### **Additional Info Field**
+- [ ] Confirm the "Additional Info (URL/Screenshot/Log Information)" field is present and optional.
+- [ ] Validate that multiple types of inputs (URLs, text, attachments) can be added.
+
+#### **Authentication Methods Field**
+- [ ] Check if the "Authentication Methods" dropdown is present.
+- [ ] Verify that "Vault UI access issue" is included as an option in the dropdown.
+
+---
+
+### **3. Incident Creation**
+- [ ] Submit a test incident using the form.
+- [ ] Verify that after submission:
+  - All selected fields (e.g., Auth Method, Environment) are correctly saved.
+  - None of the selected fields display as "undefined" in the description box.
+- [ ] Test with different combinations of Environment, Urgency, and Authentication Method to ensure the incident submission works as expected.
+- [ ] Check that the reference link for Azure AD group creation is included in the summary of the incident:
+  - Example Link: `https://luluprod.service-now.com/sp?id=sc_cat_item&sys_id=41f9add947601d10593284b8536d4301`.
+
+---
+
+### **4. Auto-Mapping Functionality**
+#### **Impacted Services and Affected CI**
+- [ ] Verify that "Impacted Services" and "Affected CI" fields are auto-filled based on the selected Environment and Authentication Method.
+- [ ] Confirm these fields become mandatory only when the incident status is changed to **"In Progress"**.
+- [ ] Test various combinations to validate the correct mapping.
+
+---
+
+### **5. Error Handling**
+- [ ] Submit the form with incomplete or invalid data to ensure appropriate error messages are displayed.
+- [ ] Verify that mandatory fields prevent submission if left empty.
+
+---
+
+### **6. Usability**
+- [ ] Ensure that the form layout is user-friendly and fields are intuitively organized.
+- [ ] Confirm field descriptions and hints are clear and easy to understand.
+
+---
+
+### **7. Notifications and Logs**
+- [ ] Check if any notifications or alerts are triggered upon form submission.
+- [ ] Verify that submission details are logged accurately in ServiceNow.
+
+---
+
+### **8. Integration Check**
+- [ ] Test if the incident triggers any follow-up workflows or tasks as expected.
+- [ ] Verify that the form integrates seamlessly with other modules or systems (e.g., Incident Management).
+
+---
+
+### **9. Cross-Browser Compatibility**
+- [ ] Test the form in multiple browsers (e.g., Chrome, Edge, Firefox) to ensure consistent performance.
+
+---
+
+### **10. Final Validation**
+- [ ] Verify that all implemented requirements from the initial list are met.
+- [ ] Provide feedback on missing features or areas needing improvement.
+
+---
+
+### **Testing Notes**
+- Document any issues you encounter during the testing process, including:
+  - Steps to reproduce the issue.
+  - Expected behavior versus actual behavior.
+- Communicate these findings to the ServiceNow engineer for resolution.
+
+---
+
+This checklist ensures thorough validation of the implemented ServiceNow form, addressing both functional and usability requirements.
