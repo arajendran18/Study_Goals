@@ -1,0 +1,40 @@
+GetHelp (Incident): (Operational Tasks)
+
+Environment” field (Prod, Non-Prod) has to be added
+
+If the user choose “Prod“ the severity dropdown should list all sub fields such as (Critical, High, Medium)
+
+If the user choose “Non-Prod“ the severity dropdown should list ONLY fields such as (High, Medium)
+
+As soon as the “Urgency“ field selected, it must give a pop-up of what does the selected Urgency field is meant for.
+(E.g. Critical    - Critical system experiencing major outage with a major business impact.
+
+“Business priority” has to be replaced with “Urgency” Field (Critical, High, Medium) - With the definitions. (Note: The examples will not be included in SNOW forms. It is just to understand the differences between them and educate the user to choose the appropriate fields based on their concern)
+
+Critical    - Critical system experiencing major outage with a major business impact.
+(e.g., The vault application is inaccessible, primary cluster is unserviceable to users)
+
+High       - Major issue impacting a small group of users where a workaround is in place. 
+(e.g., Some teams impacted reported vault )
+
+Medium - Minor issue with workaround in place 
+(e.g., Vault UI access issue/Permission denial/Secrets not found)
+
+“Business Impact, if not addressed
+
+” this field to be added. 
+
+“Additional Info(URL/Screenshot/log information)“ field has to be added (optional)
+
+“Authentication Methods“ with dropdown field to be added. 
+
+In Authentication Methods field’s dropdown, Add the one more dropdown called “Vault UI access issue“
+
+After raising the test incident, noticed that the fields such as (impacted services and Affected CI), both are not getting automatically mapped. We need both of them to be mapped automatically. Because if we change the status to “In progress“. It will indicate us to fill the mandatory fields.
+
+Need to check,  what is the exact “Impacted Services” and “Affected CI“ has to be automatically picked up?
+
+After raising the test incident, noticed that the auth method and Environment are still existing the “Description box” and shows “undefined”. (it is Auth method and Environment fields are not even exist when submitting the incident) - Reason to identify, why it is showing here. Inform to Stan and resolve this issue.
+
+In the SNOW form brief summary,  Give the reference to reach out to the below link, for creating Azure AD groups and corresponding groups and configuration in HashiCorp Vault. This is not for access request. if you want please use the below form
+https://luluprod.service-now.com/sp?id=sc_cat_item&sys_id=41f9add947601d10593284b8536d4301
