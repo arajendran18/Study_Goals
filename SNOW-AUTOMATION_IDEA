@@ -1,0 +1,148 @@
+To implement a **separate workflow for each issue type** with a clear process for resolving **User-Specific Issues**, **Team-Level Issues**, and **Path-Specific Issues**, here's how you can design the automation using ServiceNow and integrate it with Vault and Active Directory (AD).
+
+---
+
+### **1. High-Level Design**
+- **ServiceNow Catalog Item**: "Vault Access Issue Resolution"
+- **Workflow Selection**: Based on user-selected issue type:
+  - **User-Specific Issues**
+  - **Team-Level Issues**
+  - **Path-Specific Issues**
+
+---
+
+### **2. Workflow for User-Specific Issues**
+#### **User Inputs**
+- Affected username
+- Successful username
+- Absolute secret path (e.g., `aws/creds/dev-role`)
+
+#### **Workflow Steps**
+1. **Validate Input**:
+   - Ensure affected username, successful username, and secret path are provided.
+
+2. **Fetch AD Groups**:
+   - Use ServiceNow Orchestration to query AD for group memberships:
+     - Fetch groups for both the affected and successful users.
+     - Identify missing groups for the affected user.
+
+3. **Fetch Vault Policies**:
+   - Use the Vault API to retrieve policies associated with the successful user’s groups.
+   - Identify the policy that grants access to the secret path.
+
+4. **Determine Responsible Group**:
+   - Cross-reference AD groups with Vault policies.
+   - Identify the AD group responsible for granting access.
+
+5. **Notification**:
+   - Notify the requester with the missing AD group and policy details:
+     - **AD Group Name**
+     - **Vault Policy** that needs to be assigned.
+
+#### **Example Notification**
+- **Subject**: Missing Group for Vault Access
+- **Body**:  
+  - The affected user (`username`) is missing membership in the AD group **`vault-dev-access`**, which has the required Vault policy **`read-aws-creds`** to access the path `aws/creds/dev-role`.
+
+---
+
+### **3. Workflow for Team-Level Issues**
+#### **User Inputs**
+- Team or role name (e.g., `vault-dev-team`)
+- Absolute secret path (e.g., `aws/creds/dev-role`)
+
+#### **Workflow Steps**
+1. **Validate Input**:
+   - Ensure the team/role name and secret path are provided.
+
+2. **Fetch AD Group Membership**:
+   - Query AD for the group associated with the team.
+   - Retrieve users in the group.
+
+3. **Check Vault Policies**:
+   - Retrieve the policies associated with the team's AD group.
+   - Verify if the policies include the required permissions (`read`, `list`) for the path.
+
+4. **Secret Path Check**:
+   - Verify if the secret path exists in Vault and is active.
+   - If not, escalate to the Vault admin team to investigate path issues.
+
+5. **Notification**:
+   - Notify the requester with:
+     - **Missing Policy Details** for the team's group.
+     - **Steps for Remediation** (e.g., assigning correct policies).
+
+#### **Example Notification**
+- **Subject**: Team-Level Access Issue Resolved  
+- **Body**:  
+  - The group **`vault-dev-team`** is missing the Vault policy **`read-aws-creds`**, which is required to access the path `aws/creds/dev-role`. Please update the policy or escalate for further assistance.
+
+---
+
+### **4. Workflow for Path-Specific Issues**
+#### **User Inputs**
+- Absolute secret path (e.g., `aws/creds/dev-role`)
+- Optional: Username or team name.
+
+#### **Workflow Steps**
+1. **Validate Input**:
+   - Ensure the secret path is provided.
+
+2. **Check Path Configuration**:
+   - Query Vault to verify the existence and configuration of the secret path:
+     - Is the secret engine active?
+     - Does the path have policies assigned?
+
+3. **Fetch Path Policies**:
+   - Retrieve all policies associated with the path.
+   - Identify which AD groups or roles are allowed to access it.
+
+4. **Team/User Permissions**:
+   - If a user/team is provided:
+     - Cross-reference their AD group memberships with the path’s policies.
+     - Identify any missing policies.
+
+5. **Notification**:
+   - Notify the requester with:
+     - **Path Configuration Issues**
+     - **Missing Policies**
+
+#### **Example Notification**
+- **Subject**: Path-Specific Access Issue Resolved  
+- **Body**:  
+  - The secret path `aws/creds/dev-role` exists but is missing the required Vault policy **`read-aws-creds`**. The group **`vault-dev-access`** has the necessary permissions. Assign the user/team to this group for access.
+
+---
+
+### **5. Automation Details**
+#### **ServiceNow Integration with AD**
+- Use a MID server to query AD groups via LDAP:
+  - Fetch the group memberships of users.
+  - Compare memberships to identify missing groups.
+
+#### **ServiceNow Integration with Vault**
+- Use Vault API to:
+  - Retrieve policies assigned to a path.
+  - Fetch details of a secret engine’s status.
+  - Validate if users or teams have access to specific paths.
+
+#### **Dynamic Form Configuration**
+- Use dynamic fields to adjust inputs based on the selected issue type:
+  - **User-Specific**: Affected and successful usernames.
+  - **Team-Level**: Team/role name.
+  - **Path-Specific**: Secret path.
+
+#### **Policy Analysis**
+- Automate the process of cross-referencing policies with AD groups and paths to identify gaps.
+
+---
+
+### **6. Benefits of This Workflow**
+- **Structured Inputs**: Collects the exact data needed to diagnose issues.
+- **Automated Diagnostics**: Reduces manual effort in identifying and resolving issues.
+- **Actionable Notifications**: Provides clear next steps to resolve access issues.
+- **Scalable Design**: Each workflow targets a specific problem type, allowing modular maintenance.
+
+---
+
+Would you like detailed API scripts or sample configurations for the workflows?
