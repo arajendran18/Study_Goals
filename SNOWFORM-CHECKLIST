@@ -105,3 +105,55 @@ Below is a comprehensive checklist to help you test all aspects of the implement
 ---
 
 This checklist ensures thorough validation of the implemented ServiceNow form, addressing both functional and usability requirements.
+
+
+### **Simple Checklist for Validating ServiceNow Catalog Form Workflow**
+
+---
+
+#### **1. Form Submission**
+- [ ] Is the ServiceNow catalog form accessible via the test URL?  
+- [ ] Are all required fields present and properly labeled?  
+- [ ] Are mandatory fields enforced (cannot be left blank)?  
+- [ ] Does the form accept valid inputs and reject invalid ones?  
+- [ ] Is a confirmation message or request ID displayed after form submission?  
+
+---
+
+#### **2. Manager Approval**
+- [ ] Does the requestor’s manager receive an approval notification?  
+- [ ] Can the manager approve or reject the request?  
+- [ ] Does a rejected request notify the requestor?  
+- [ ] Does an approved request proceed to the next step?  
+
+---
+
+#### **3. Jira Story Creation**
+- [ ] Is a Jira story created upon manager approval?  
+- [ ] Does the Jira story include details from the ServiceNow request?  
+- [ ] Is the Jira story link added to the ServiceNow ticket's worklog?  
+
+---
+
+#### **4. Ticket Closure**
+- [ ] Is the ServiceNow ticket automatically closed after the Jira story is created?  
+- [ ] Does the requestor receive a notification upon ticket closure?  
+- [ ] Is the ticket’s worklog updated with closure details?  
+
+---
+
+#### **5. PM Review**
+- [ ] Is the Jira story assigned to the PM for review?  
+- [ ] Does the story include all necessary details for the PM?  
+- [ ] Does the PM receive a notification about the Jira story?  
+
+---
+
+#### **6. General Checks**
+- [ ] Is the entire workflow functional end-to-end?  
+- [ ] Are permissions correctly applied (e.g., only managers can approve)?  
+- [ ] Are error messages meaningful and logged for troubleshooting?  
+
+---
+
+This simplified checklist focuses on core functionalities for quick and effective validation.
