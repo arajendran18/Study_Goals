@@ -146,3 +146,128 @@ To implement a **separate workflow for each issue type** with a clear process fo
 ---
 
 Would you like detailed API scripts or sample configurations for the workflows?
+
+### **4. Workflow for Environment-Specific Issues**
+
+#### **User Inputs**
+- Username or team name.
+- Environment (e.g., Non-Production, Production).
+- Absolute secret path (e.g., `aws/creds/dev-role`).
+
+---
+
+#### **Workflow Steps**
+
+1. **Validate Input**:
+   - Ensure username/team name, environment, and secret path are provided.
+
+2. **Check Path in Affected Environment**:
+   - Use the Vault API to query the secret path in the specified environment.
+   - Validate the existence and status of the secret engine in the affected environment.
+
+3. **Compare Environments**:
+   - Query the secret path in the alternate environment (e.g., Production if the issue is in Non-Production).
+   - Compare policies, secret engine configuration, and token issuance settings.
+
+4. **Identify Configuration Differences**:
+   - Secret engine disabled or misconfigured in the affected environment.
+   - Path-specific policies missing or different between environments.
+   - Access control differences in Vault.
+
+5. **Node Health Check**:
+   - Validate the health of Vault nodes in the affected environment using the `/sys/health` API.
+   - Check for issues like desynchronization or a down node.
+
+6. **Notification**:
+   - Provide a summary of discrepancies between environments.
+   - Include steps for remediation:
+     - Sync configuration.
+     - Re-enable secret engines or update policies.
+
+---
+
+#### **Example Notification**
+- **Subject**: Environment-Specific Access Issue Resolved  
+- **Body**:  
+  - Access to the path `aws/creds/dev-role` is unavailable in the Non-Production environment due to:  
+    - Secret engine status: **Disabled**.  
+    - Missing Vault policy: **read-aws-creds-npd**.  
+    - Suggested Fix: Re-enable the secret engine and assign the missing policy.
+
+---
+
+### **5. Workflow for Authentication Issues**
+
+#### **User Inputs**
+- Username.
+- Authentication method (e.g., LDAP, Azure AD).
+- Error description (e.g., unable to log in, token expired).
+
+---
+
+#### **Workflow Steps**
+
+##### **For Login Issues**:
+
+1. **Validate Input**:
+   - Ensure username and authentication method are provided.
+
+2. **Verify Authentication Method**:
+   - Confirm the user is attempting to log in using the correct method (e.g., Azure AD for enterprise accounts).
+   - Validate the method configuration in Vault.
+
+3. **Check Azure AD Status**:
+   - Query Azure AD to verify:
+     - The user account is active.
+     - Credentials are correct (if integrated with ServiceNow Orchestration).
+
+4. **Vault Policy Verification**:
+   - Use the Vault API to ensure the user has policies assigned for the required access.
+
+5. **Escalate for AD Issues**:
+   - If the user is not active in Azure AD, notify the requester to contact their IT admin for account reactivation.
+
+##### **For Token Renewal/Assignment Issues**:
+
+1. **Validate Input**:
+   - Ensure username and error description (e.g., token expired) are provided.
+
+2. **Check Role Configuration**:
+   - Use the Vault API to verify the role associated with the user:
+     - `token_policies` assigned to the role.
+     - TTL and maximum TTL settings.
+
+3. **Verify Token Status**:
+   - Query the user’s current token using Vault’s `/auth/token/lookup` endpoint.
+   - Identify if the token:
+     - Exceeded its maximum TTL.
+     - Has renewal disabled in its role configuration.
+
+4. **Token Reissue**:
+   - If applicable, reissue a token with an updated TTL or fix role settings.
+
+5. **Notification**:
+   - Notify the user of the issue and provide a renewed token or escalation details.
+
+---
+
+#### **Example Notification**
+
+- **For Login Issues**:
+  - **Subject**: Vault Login Issue Resolved  
+  - **Body**:  
+    - Your login issue was due to an incorrect authentication method. Please use **Azure AD** to log in. Contact IT support if your account is inactive.
+
+- **For Token Issues**:
+  - **Subject**: Vault Token Issue Resolved  
+  - **Body**:  
+    - Your token renewal failed because the maximum TTL for your role was exceeded. A new token has been issued with an updated TTL.
+
+---
+
+### **6. Benefits of Expanded Workflows**
+- **Targeted Remediation**: Tailors the solution to specific issue types like environment mismatches or token management.
+- **Enhanced Automation**: Streamlines diagnosis and resolution through clear workflows.
+- **Proactive Notifications**: Alerts users with actionable information to minimize downtime.
+
+Would you like sample API scripts or ServiceNow configurations for these additional workflows?
