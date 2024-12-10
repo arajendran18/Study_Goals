@@ -1,0 +1,68 @@
+8.4.4. JWT Auth Role
+
+
+ Step 1: Define the JWT role policy as mentioned above, which indicates which KV path this role should have access to 
+
+Step 2: Create the following role definition, as example, SAML single sign-on for lululemon · GitLab 
+
+
+####################### Auth-JWT-Roles #######################
+resource "vault_jwt_auth_backend_role" "esms-npd-sample-jwt" {
+  role_type  = "jwt"
+  role_name  = "rol-esms-npd-sample-jwt"
+  user_claim = "user_email"
+  token_policies = [
+    "glb-admin"
+  ]
+  token_explicit_max_ttl = 60
+  bound_claims_type = "glob"
+  bound_claims = {
+    "project_path"  = "lululemon/lululemon-internal/esms/github-jwt-example"
+    "iss"           = "https://gitlab.com"
+  }
+}
+Note that you could add additional bound claims, as well as other attributes defined under here JWT/OIDC - Auth Methods - HTTP API | Vault | HashiCorp Developer,  such as “bound_cidr_blocks“ to enforce additional criteria to obtain valid Vault token
+
+ 
+
+Once the above JWT role has been defined, this is a sample pipeline yml to consume the secret. Not that there are 2 jobs, one is using native gitlab “secrets“ integration, which is more secure and can mask the secret output from the pipeline log. However it only allows interaction with KV secrets. If you would need to interact with other secret engines such as AWS, consider using curl or vault CLI commands as shown in the manual example job
+
+SAML single sign-on for lululemon · GitLab  
+
+
+
+### Define the following variables in CI/CD Variables in Gitlab configs ###
+### $VAULT_SERVER_URL ---- required, npd or prd esms vault              ###
+### $VAULT_AUTH_ROLE  ---- required, from the onboarding config         ###
+### $VAULT_AUTH_PATH  ---- optional, default is jwt                     ###
+### $VAULT_NAMESPACE  ---- optional                                     ###
+job_with_secrets:
+  tags:
+    - artifactory                        # need to use an image tag that could resolve to internal lulu network dns address 
+  id_tokens:
+    VAULT_ID_TOKEN:                      # Assigns the JWT to the $VAULT_ID_TOKEN Variable
+      aud: https://npd-esms.lllint.com    
+  secrets:
+    # this example fetches the secret and save it under the path $EXAMPLE_SECRET
+    EXAMPLE_SECRET_FILE:
+      vault: test/a@esms-automation-kv   # authenticates using $VAULT_ID_TOKEN, this retrieves key 'a' under secret at path 'esms-automation-kv/test'
+    # this example fetches the secret and save it under env var in the runtime 
+    EXAMPLE_SECRET_VAR:
+      file: false
+      vault: test/a@esms-automation-kv   # authenticates using $VAULT_ID_TOKEN, this retrieves key 'a' under secret at path 'esms-automation-kv/test'
+  script:
+    - echo $EXAMPLE_SECRET_FILE
+    - echo $EXAMPLE_SECRET_VAR
+job_manual_vault_auth:
+  tags:
+    - artifactory 
+  id_tokens:
+    VAULT_ID_TOKEN:                      # Assigns the JWT to the $VAULT_ID_TOKEN Variable
+      aud: https://npd-esms.lllint.com    
+  script:
+    - |
+      echo "this is a manual vault auth run instead of using gitlab \"secrets\""
+      echo "auth to vault to exchange for a token based on onboarding tf config jwt role"
+      VAULT_TOKEN=$(curl --request POST --data "{\"role\": \"rol-esms-npd-sample-jwt\", \"jwt\": \"$VAULT_ID_TOKEN\" }" https://npd-esms.lllint.com/v1/auth/jwt/login | jq -r .auth.client_token)
+      echo "read KV secrets using the token from above"
+      curl --header "X-Vault-Token: $VAULT_TOKEN"  https://npd-esms.lllint.com/v1/esms-automation-kv/data/test
