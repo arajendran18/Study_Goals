@@ -1,0 +1,131 @@
+### **Vault Replication Issue SOP**  
+This Standard Operating Procedure (SOP) outlines the steps to diagnose and resolve replication issues in a Vault cluster.
+
+---
+
+### **1. Objective**
+To ensure smooth synchronization between primary, performance, and disaster recovery (DR) clusters in Vault, minimizing downtime and restoring normal replication functionality quickly.
+
+---
+
+### **2. Prerequisites**
+- Admin access to all Vault clusters (primary, performance, and DR).  
+- Knowledge of the replication topology and roles (primary, performance, DR).  
+- Access to Vault logs and metrics (Splunk or any other logging tool).  
+- Vault CLI and API access enabled.  
+
+---
+
+### **3. Common Symptoms of Replication Issues**
+- **Out-of-Sync Data:** Data is inconsistent between the primary and secondary clusters.  
+- **Stale Replicas:** DR or performance clusters show outdated information.  
+- **Replication Status Errors:** Status in Vault UI or CLI indicates errors.  
+- **High Latency:** Delays in data synchronization.  
+- **Cluster Connection Errors:** Performance or DR clusters unable to communicate with the primary.  
+
+---
+
+### **4. Troubleshooting Steps**
+
+#### **Step 1: Verify Replication Status**
+- Use the Vault CLI or UI to check the replication status.  
+  ```bash
+  vault read sys/replication/status
+  ```
+  **What to look for:**  
+  - Status of the primary and secondary clusters (active, standby, etc.).  
+  - Lag or error messages.
+
+---
+
+#### **Step 2: Check Vault Logs**
+- Examine logs for any replication-related errors. Use a logging tool like Splunk or access logs directly:  
+  ```bash
+  cat /var/log/vault/vault.log | grep 'replication'
+  ```
+  **Common errors to watch for:**  
+  - TLS handshake errors.  
+  - Token revocation or expiration.  
+  - Network connectivity issues.
+
+---
+
+#### **Step 3: Verify Token and Policies**
+- Ensure the secondary cluster has a valid replication token from the primary.  
+  - Generate a new token if required:  
+    ```bash
+    vault write -f sys/replication/primary/secondary-token id=<secondary-cluster-id>
+    ```
+  - Verify policies attached to the replication token. Ensure it has sufficient permissions (`replication-secondary` policy).
+
+---
+
+#### **Step 4: Network Connectivity Check**
+- Test connectivity between the primary and secondary clusters.  
+  ```bash
+  ping <secondary-cluster-IP>
+  telnet <secondary-cluster-IP> 8200
+  ```
+  **What to do if there are issues:**  
+  - Check firewall rules.  
+  - Verify DNS resolution.  
+
+---
+
+#### **Step 5: Validate Certificates**
+- If TLS is enabled, ensure certificates are valid and match across clusters.  
+  ```bash
+  openssl s_client -connect <cluster-IP>:8200
+  ```
+  **Common issues:**  
+  - Expired certificates.  
+  - Mismatched CA.
+
+---
+
+#### **Step 6: Restart Replication Process**
+- **Disable and re-enable replication:**  
+  On the primary cluster:  
+  ```bash
+  vault write -f sys/replication/primary/disable
+  vault write sys/replication/primary/enable
+  ```
+  On the secondary cluster:  
+  ```bash
+  vault write sys/replication/secondary/enable token=<replication-token>
+  ```
+
+---
+
+#### **Step 7: Monitor Metrics**
+- Check Vault replication metrics to identify ongoing issues:  
+  - **Latency metrics:** High latency can indicate network issues.  
+  - **Error rates:** Frequent errors in replication requests.  
+
+---
+
+#### **Step 8: Perform a Full Sync**
+- Trigger a full synchronization to resolve data inconsistencies.  
+  ```bash
+  vault write -f sys/replication/secondary/sync
+  ```
+
+---
+
+#### **Step 9: Escalation**
+If issues persist, escalate to the Vault support team or the HashiCorp technical support team with the following details:  
+- Replication status output.  
+- Relevant logs and metrics.  
+- Recent configuration changes.
+
+---
+
+### **5. Preventive Measures**
+- Regularly monitor replication status using automated tools.  
+- Schedule periodic token renewals for replication tokens.  
+- Test connectivity and TLS certificates during routine maintenance.  
+- Document and review all configuration changes affecting replication.
+
+---
+
+This SOP ensures systematic troubleshooting and resolution of Vault replication issues while maintaining operational continuity.
