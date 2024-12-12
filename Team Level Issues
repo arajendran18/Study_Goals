@@ -1,0 +1,107 @@
+### **Team-Level Issues: All Team Members Unable to Access Vault**
+
+Here are possible scenarios and their detailed descriptions:
+
+---
+
+#### **1. Missing Team-Wide Azure AD Group Membership**
+- **Description:**  
+  The entire team is not part of the required Azure AD group that grants access to Vault. This could occur due to a configuration oversight when setting up the team or when onboarding new projects.
+- **Troubleshooting:**  
+  - Verify if the Azure AD group exists for the team.
+  - Check if the team members have been added to the correct group.
+  - Ensure the group is assigned the necessary Vault policies.
+
+---
+
+#### **2. Vault Policy Misconfiguration**
+- **Description:**  
+  The policy assigned to the team's Azure AD group does not include the required permissions for accessing Vault paths or resources.
+- **Troubleshooting:**  
+  - Validate the policy associated with the Azure AD group.
+  - Check if the policy has the correct paths and capabilities (e.g., `read`, `list`, `update`).
+  - If issues are found, work with the Vault administrator to adjust the policy.
+
+---
+
+#### **3. Vault Path Configuration Issue**
+- **Description:**  
+  The team’s designated Vault paths are misconfigured or have been deleted. This could lead to access errors for all members attempting to retrieve secrets or credentials.
+- **Troubleshooting:**  
+  - Confirm the existence of the paths associated with the team.
+  - Validate the policies referencing these paths.
+  - Restore or reconfigure missing or misaligned paths.
+
+---
+
+#### **4. Incorrect Azure AD Role Mapping in Vault**
+- **Description:**  
+  The Azure AD group is mapped to the wrong Vault role or no role at all, preventing the entire team from authenticating successfully.
+- **Troubleshooting:**  
+  - Check the Azure AD role mappings in Vault.
+  - Ensure that the group is correctly associated with the intended Vault role.
+  - Update the role mapping to include the correct Azure AD group if required.
+
+---
+
+#### **5. Vault Authentication Backend Outage or Misconfiguration**
+- **Description:**  
+  The Azure AD authentication method in Vault is experiencing an outage or has been disabled. This prevents all users authenticating through Azure AD from accessing Vault.
+- **Troubleshooting:**  
+  - Verify the status of the Azure AD authentication method in Vault.
+  - Check Vault logs for errors related to Azure AD integration.
+  - Re-enable or fix the Azure AD backend configuration.
+
+---
+
+#### **6. Network or Connectivity Issues**
+- **Description:**  
+  The network connection between the application team’s environment and Vault is disrupted, making Vault inaccessible to all team members.
+- **Troubleshooting:**  
+  - Test connectivity to the Vault server (e.g., via `ping` or `curl` commands).
+  - Check for firewall rules or network policies that might block access.
+  - Coordinate with the networking team to resolve connectivity issues.
+
+---
+
+#### **7. Vault Server Outage or High Load**
+- **Description:**  
+  The Vault server is experiencing downtime, resource exhaustion, or is under high load, leading to unavailability for all users.
+- **Troubleshooting:**  
+  - Check the status of the Vault server and nodes.
+  - Investigate logs for signs of resource limits or errors.
+  - Restart services or scale the infrastructure if required.
+
+---
+
+#### **8. Expired or Revoked Azure AD Token for the Team**
+- **Description:**  
+  The team’s Azure AD token used for authentication has expired or has been revoked, preventing all members from logging into Vault.
+- **Troubleshooting:**  
+  - Validate the team’s Azure AD token validity.
+  - Renew or reconfigure the token as necessary.
+  - Ensure that the token expiration aligns with the team’s usage patterns.
+
+---
+
+#### **9. Onboarding Delays for a New Team**
+- **Description:**  
+  A newly onboarded team has not been fully set up in Vault or Azure AD, resulting in access issues for all members.
+- **Troubleshooting:**  
+  - Verify if the team's Azure AD group and Vault roles have been created.
+  - Check if necessary policies and paths have been assigned.
+  - Expedite the onboarding process to resolve delays.
+
+---
+
+#### **10. Team-Specific Access Suspension**
+- **Description:**  
+  Access for the team has been temporarily revoked due to compliance or security concerns, such as audits or suspicious activity.
+- **Troubleshooting:**  
+  - Confirm with the compliance or security team if access was suspended.
+  - Address the underlying concerns causing the suspension.
+  - Request reactivation of access once issues are resolved.
+
+---
+
+These scenarios can be included in a runbook with detailed steps for troubleshooting and resolution, ensuring the team can address issues independently or escalate with adequate context.
