@@ -13,3 +13,76 @@
 
 Alternate way:
 Use the below Self service link to fetch the AD group, Policies and Policies permission
+
+##########################################################################################
+### **User-Friendly SOP for Resolving Vault Access Issues**  
+
+This guide will help you quickly resolve Vault access problems by checking Azure AD groups, Vault policies, and permissions.
+
+---
+
+### **Steps to Troubleshoot Access Issues**
+
+#### **Step 1: Find a Working User for Reference**
+- **Ask your team**: Get the username of someone who can access the requested path in Vault.  
+- Note the affected user’s username (the one facing the issue).
+
+---
+
+#### **Step 2: Check Azure AD Group Memberships**
+1. **Login to Azure AD**  
+   - Use your admin credentials to access Azure AD.
+2. **Search for the Successful User**  
+   - Look up the user who has access and open their profile.  
+3. **Note Their Groups**  
+   - Write down the list of Azure AD groups they are part of.  
+4. **Search for the Affected User**  
+   - Look up the user facing the issue and open their profile.  
+5. **Compare Groups**  
+   - Identify the Vault-related groups that the successful user has but the affected user doesn’t.
+
+---
+
+#### **Step 3: Trace Missing Groups in GitLab**
+1. **Go to the GitLab Vault Access Folder**  
+   - Open the folder where group-to-policy mappings are stored.
+2. **Find the Missing Groups**  
+   - Search for the Azure AD groups that the affected user is not part of.  
+3. **Check Policies**  
+   - Open the `.tf` files and note the Vault policies linked to those groups.
+
+---
+
+#### **Step 4: Validate Vault Policies**
+1. **Go to the Vault Policy Folder in GitLab**  
+   - Open the folder where Vault policies are stored.  
+2. **Find the Policies**  
+   - Search for the policies linked to the missing Azure AD groups.  
+3. **Check for Access**  
+   - Open the policies and verify:
+     - **Paths**: The requested path is listed.  
+     - **Capabilities**: The required actions (e.g., `read`, `write`, `list`) are included.  
+
+---
+
+#### **Step 5: Keep Checking Until You Identify the Issue**  
+- Repeat Steps 3 and 4 for each missing group until you find the one granting access to the successful user.  
+
+---
+
+### **Shortcut: Use Self-Service Portal**
+- Open the self-service link provided by your team.  
+- Enter the affected user’s name and fetch:  
+  - Azure AD groups.  
+  - Attached Vault policies.  
+  - Policy permissions.  
+- Compare this information with the working user to quickly identify the issue.
+
+---
+
+### **Why Follow This SOP?**
+- Saves time by narrowing down issues to specific groups or policies.  
+- Ensures consistency by following a structured process.  
+- Provides clear documentation for audit or future troubleshooting.
+
+Would you like a visual flowchart or checklist for these steps?
