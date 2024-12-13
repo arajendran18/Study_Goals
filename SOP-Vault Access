@@ -1,0 +1,15 @@
+1. Check with your team and get the username who has access to the requested path.
+2. Login into Azure AD and select the User
+3. Check the group membership of the successful user
+4. Check the group membership of your user (i.e.,affected user)
+5. Compare both of the groups, fetch the missed vault AD groups of the affected user compared to successful user.
+6. Go to respective gitlab repo and navigate to Vault Access folder
+7. Search for the required group and open the (.tf file)
+8. Fetch the attached policy
+9. Navigate to the Vault policy folder and  check the policy
+10. Open the policy and verify the path and capabilities
+11. Repeat step7 to 9 continuosly for all the missed AD groups (meaning, the groups you are not being part of) until you identify the right AD group which you are a member of.
+
+
+Alternate way:
+Use the below Self service link to fetch the AD group, Policies and Policies permission
