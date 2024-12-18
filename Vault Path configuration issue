@@ -1,0 +1,165 @@
+### **Title:** Vault Path Configuration Issue  
+
+### **Description:**  
+A Vault path configuration issue occurs when the required Vault paths are not correctly defined or are misconfigured. This can lead to users or applications being unable to access specific resources, generate credentials, or perform operations in Vault.  
+
+---
+
+### **Standard Operating Procedure (SOP)**  
+
+#### **Step 1: Identify the Issue**  
+1. **Error Confirmation:**  
+   - Collect the exact error message. Common errors include:  
+     - "403 Unauthorized – You are not authorized to access this path."  
+     - "Role not found or you do not have permissions."  
+
+2. **Request the Path Details:**  
+   - Ask the user for the Vault path they are attempting to access (e.g., `app-database/creds/dev`).  
+
+3. **Check if the Path Exists:**  
+   - Verify if the path exists in Vault using the CLI or UI:  
+     ```bash
+     vault list <path>
+     ```  
+
+---
+
+#### **Step 2: Validate the Path Configuration**  
+1. **Locate the Mount Point:**  
+   - Identify the backend where the path is mounted (e.g., `kv`, `database`, `aws`).  
+   - Use the following command to list mount points:  
+     ```bash
+     vault mounts
+     ```
+
+2. **Check Path Accessibility:**  
+   - Ensure the requested path is accessible by testing with a token that has `root` or `admin` permissions:  
+     ```bash
+     vault kv get <path>
+     ```  
+
+3. **Check Backend Configuration:**  
+   - If the path is for a dynamic secret (e.g., database or AWS), confirm the backend is correctly configured:  
+     - For database backends: Check connection configurations.  
+     - For AWS backends: Verify role configurations.  
+
+---
+
+#### **Step 3: Validate Policies Associated with the Path**  
+1. **List the Associated Policies:**  
+   - Determine the policies attached to the user's token:  
+     ```bash
+     vault token lookup
+     ```  
+
+2. **Inspect the Policy Configuration:**  
+   - Confirm the policy includes the required path and capabilities:  
+     ```bash
+     vault read sys/policy/<policy-name>
+     ```  
+   - Example of a correct policy:  
+     ```hcl
+     path "app-database/creds/dev" {
+       capabilities = ["read", "list", "update"]
+     }
+     ```
+
+---
+
+#### **Step 4: Fix the Path Configuration**  
+1. **For Static Secrets (e.g., KV Store):**  
+   - Ensure the path exists and contains the expected data.  
+   - If missing, create or update the path:  
+     ```bash
+     vault kv put <path> key=value
+     ```  
+
+2. **For Dynamic Secrets (e.g., Database, AWS):**  
+   - Check if the role and path configurations are correct.  
+   - Example for database role creation:  
+     ```bash
+     vault write database/roles/dev-role \
+       db_name=my-database \
+       creation_statements="CREATE USER '{{name}}'..." \
+       default_ttl="1h" \
+       max_ttl="24h"
+     ```  
+
+3. **Update the Policy:**  
+   - Add the missing path to the policy if required.  
+   - Apply the updated policy:  
+     ```bash
+     vault policy write <policy-name> <policy-file.hcl>
+     ```  
+
+---
+
+#### **Step 5: Test Access**  
+1. **Validate with a User Token:**  
+   - Use the affected user's token to test access to the path:  
+     ```bash
+     vault kv get <path>
+     ```  
+
+2. **Confirm with the User:**  
+   - Ask the user to retry their operation and verify if the issue is resolved.  
+
+---
+
+### **Scenarios**  
+
+#### **Scenario 1: Path Not Found**  
+**Symptom:** User reports "404 Path not found" error.  
+**Root Cause:** The requested path does not exist in Vault.  
+**Resolution:**  
+1. Verify the requested path and ensure it matches the actual path.  
+2. Create the path if it’s missing:  
+   ```bash
+   vault kv put app-database/config dev-host=10.0.0.1
+   ```  
+
+---
+
+#### **Scenario 2: Missing Capabilities in Policy**  
+**Symptom:** User receives "403 Unauthorized" while accessing `app-database/config/dev`.  
+**Root Cause:** The user’s policy does not include `read` and `list` capabilities for the requested path.  
+**Resolution:**  
+1. Update the policy to include the required path and capabilities:  
+   ```hcl
+   path "app-database/config/dev" {
+     capabilities = ["read", "list"]
+   }
+   ```  
+2. Reapply the policy and test access.  
+
+---
+
+#### **Scenario 3: Misconfigured Dynamic Secret Backend**  
+**Symptom:** User cannot generate database credentials.  
+**Root Cause:** The database backend role is misconfigured or does not match the requested path.  
+**Resolution:**  
+1. Check the database backend configuration:  
+   ```bash
+   vault read database/roles/dev-role
+   ```  
+2. Correct the role or path configuration as needed.  
+
+---
+
+#### **Scenario 4: Incorrect Wildcards in Policy**  
+**Symptom:** User is denied access to `app-database/creds/dev`, even though the policy has `app-database/*`.  
+**Root Cause:** The wildcard does not match the nested path.  
+**Resolution:**  
+1. Add the specific path to the policy:  
+   ```hcl
+   path "app-database/creds/dev" {
+     capabilities = ["read", "list"]
+   }
+   ```  
+2. Apply the updated policy and test.  
+
+---
+
+
+
+This SOP ensures a methodical approach to diagnosing and resolving Vault path configuration issues, empowering users to identify and fix related problems independently.
