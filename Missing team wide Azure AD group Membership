@@ -1,0 +1,102 @@
+### **Title:** Missing Team-Wide Azure AD Group Membership  
+### **Description:**  
+The entire team is not part of the required Azure AD group that grants access to Vault. This issue typically occurs due to misconfiguration during team setup or onboarding of new projects. The affected users might experience errors such as **403 Unauthorized**, inability to generate credentials, or missing permissions for specific Vault paths.  
+
+---
+
+### **Troubleshooting Steps**  
+
+#### **Step 1: Validate the Policy Associated with the Azure AD Group**  
+1. Log in to the **Vault UI** or use the Vault CLI with the appropriate permissions.  
+2. Locate the policy associated with the Azure AD group linked to the Vault path.  
+   - Use the following command in the CLI:  
+     ```bash
+     vault read sys/policy/<policy-name>
+     ```
+   - In the Vault UI, navigate to the **Policies** section and search for the relevant policy.  
+
+3. Review the policy definition. Verify that:  
+   - The requested Vault path (e.g., `app-daps-database/*`) is included in the policy.  
+   - The required capabilities (e.g., `read`, `list`, `update`) are present.  
+   - Example policy structure:  
+     ```hcl
+     path "app-daps-database/*" {
+       capabilities = ["read", "list"]
+     }
+     path "app-daps-database/config/*" {
+       capabilities = ["read"]
+     }
+     ```  
+
+---
+
+#### **Step 2: Check Group Membership in Azure AD**  
+1. Log in to the **Azure Portal**.  
+2. Search for the team-wide Azure AD group linked to the Vault policy.  
+   - Navigate to **Azure Active Directory** > **Groups**.  
+   - Search for the group name associated with the Vault policy (this information can be found in your team documentation or self-service tools).  
+
+3. Validate the group membership:  
+   - Confirm whether the affected team members are listed as group members.  
+   - If not, note the missing users.  
+
+4. Verify that all relevant users are part of the group. If the team has been onboarded recently, confirm that the team-wide group was properly created and includes all required members.  
+
+---
+
+#### **Step 3: Add Missing Members to the Azure AD Group**  
+1. If users are not part of the required Azure AD group:  
+   - Contact the group administrator or IT support to request addition.  
+   - Provide the following details:  
+     - Usernames or email addresses of the affected users.  
+     - Name of the Azure AD group.  
+     - Relevant Vault paths and the required permissions (e.g., `read`, `list`).  
+
+2. For new projects, confirm that the Azure AD group is correctly linked to the Vault policy.  
+
+---
+
+#### **Step 4: Validate Vault Access**  
+1. Once the users are added to the group, allow up to 30 minutes for changes to propagate.  
+2. Ask the users to retry accessing the Vault path or generating credentials.  
+3. If access is still denied:  
+   - Revalidate the Vault policy.  
+   - Check for any additional Azure AD groups linked to the path or permissions hierarchy.  
+
+---
+
+### **Scenarios**  
+
+#### **Scenario 1: Entire Team Fails to Access Vault Paths**  
+**Error Message:** "403 Unauthorized – You are not authorized to access this path."  
+- **Possible Cause:** The Azure AD group linked to the requested Vault path is empty or missing.  
+- **Resolution:**  
+  1. Verify the Azure AD group membership for the entire team.  
+  2. Add missing users to the group.  
+  3. Revalidate the Vault policy to ensure correct paths and capabilities.  
+
+---
+
+#### **Scenario 2: New Team/Project Onboarded Without Azure AD Group Configuration**  
+**Symptom:** No users in the team can access any Vault paths or generate credentials.  
+- **Possible Cause:** The Azure AD group was not created or linked to the Vault policy.  
+- **Resolution:**  
+  1. Confirm whether an Azure AD group exists for the new team/project.  
+  2. If missing, create the Azure AD group and link it to the Vault policy.  
+  3. Update the Vault policy with the required paths and capabilities.  
+
+---
+
+#### **Scenario 3: Access Denied for a Specific Vault Path**  
+**Symptom:** Users can access some paths but not others within Vault.  
+- **Possible Cause:**  
+  - The Vault policy associated with the Azure AD group does not include the specific path.  
+  - Capabilities for the requested path are insufficient (e.g., `read` is missing).  
+- **Resolution:**  
+  1. Review the Vault policy linked to the Azure AD group.  
+  2. Add the missing path or capabilities as required.  
+  3. Revalidate access.  
+
+---
+
+This SOP empowers users to independently identify and resolve Azure AD group membership issues affecting Vault access.
