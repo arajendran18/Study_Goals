@@ -1,0 +1,161 @@
+### **Title:** Vault Policy Misconfiguration  
+
+### **Description:**  
+The policy assigned to the team's Azure AD group does not include the required permissions for accessing Vault paths or resources. This issue often leads to errors like "403 Unauthorized," inability to generate credentials, or access being denied for specific Vault paths.  
+
+---
+
+### **Standard Operating Procedure (SOP)**  
+
+#### **Step 1: Identify the Issue**  
+1. **Error Confirmation:** Collect the error message reported by the user. Common errors include:  
+   - "403 Unauthorized – You are not authorized to access this path."  
+   - "Role wasn’t found or you do not have permissions."  
+   - "Unable to generate credentials."  
+
+2. **Path Verification:**  
+   - Request the exact Vault path the user is trying to access.  
+   - Confirm if the requested path exists in Vault.  
+
+---
+
+#### **Step 2: Validate the Policy Configuration**  
+1. **Locate the Policy Name:**  
+   - If the Azure AD group is known, identify the policy assigned to it.  
+   - Use the Vault CLI or UI:  
+     ```bash
+     vault list sys/policies/acl
+     ```
+
+2. **Read the Policy Content:**  
+   - Use the following CLI command to view the policy:  
+     ```bash
+     vault read sys/policy/<policy-name>
+     ```  
+   - In the Vault UI, navigate to **Access Policies** > Search for the relevant policy.  
+
+3. **Check Policy Syntax and Scope:**  
+   - Ensure the policy includes the required paths and permissions.  
+   - Example of a valid policy:  
+     ```hcl
+     # Allows access to specific database roles
+     path "app-database/creds/*" {
+       capabilities = ["read", "list"]
+     }
+     
+     # List and read configurations
+     path "app-database/config/*" {
+       capabilities = ["read", "list"]
+     }
+     ```
+
+---
+
+#### **Step 3: Compare Policy Permissions**  
+1. **User Policy Validation:**  
+   - Use the Vault CLI or API to check the policies attached to the user or role:  
+     ```bash
+     vault token lookup
+     ```  
+   - Identify missing permissions by comparing the paths and capabilities in the user’s policy with the required paths.  
+
+2. **Team Policy Validation:**  
+   - Check the policy applied to the Azure AD group.  
+   - Compare the policies assigned to users who have access versus those who don’t.  
+
+---
+
+#### **Step 4: Update the Policy**  
+1. **Edit the Policy:**  
+   - If the required paths or permissions are missing, update the policy. Example for adding missing permissions:  
+     ```hcl
+     # Adding access to the new database path
+     path "app-database/creds/dev" {
+       capabilities = ["read", "list", "update"]
+     }
+     ```
+
+2. **Apply the Updated Policy:**  
+   - Update the policy using the Vault CLI:  
+     ```bash
+     vault policy write <policy-name> <policy-file.hcl>
+     ```
+
+3. **Verify Policy Application:**  
+   - Ensure the Azure AD group is mapped to the updated policy using the `auth` command:  
+     ```bash
+     vault auth list
+     ```
+
+---
+
+#### **Step 5: Test Access**  
+1. **User Testing:**  
+   - Ask the user to retry the operation after the policy is updated.  
+
+2. **Validate Access:**  
+   - Confirm that the user can now access the intended Vault path.  
+
+---
+
+### **Scenarios**  
+
+#### **Scenario 1: Missing Permissions in Policy**  
+**Symptom:** User receives "403 Unauthorized" while trying to access `app-database/creds/dev`.  
+**Root Cause:** The policy does not include the path `app-database/creds/dev`.  
+**Resolution:**  
+1. Edit the policy to include the missing path and required capabilities.  
+   ```hcl
+   path "app-database/creds/dev" {
+     capabilities = ["read", "list"]
+   }
+   ```  
+2. Reapply the updated policy and test access.  
+
+---
+
+#### **Scenario 2: Incorrect Capabilities Assigned**  
+**Symptom:** User can list resources but cannot generate credentials.  
+**Root Cause:** The policy lacks the `update` capability for the path.  
+**Resolution:**  
+1. Update the policy to include `update` for the path.  
+   ```hcl
+   path "app-database/creds/dev" {
+     capabilities = ["read", "list", "update"]
+   }
+   ```  
+2. Reapply the policy and confirm the fix.  
+
+---
+
+#### **Scenario 3: Azure AD Group Not Mapped Correctly**  
+**Symptom:** The entire team fails to access Vault paths, despite having the correct policy.  
+**Root Cause:** The Azure AD group is not mapped to the policy in Vault.  
+**Resolution:**  
+1. Verify the group-to-policy mapping in Vault.  
+   ```bash
+   vault auth read auth/azure/groups/<group-name>
+   ```  
+2. If missing, map the group to the policy:  
+   ```bash
+   vault write auth/azure/groups/<group-name> policies=<policy-name>
+   ```  
+
+---
+
+#### **Scenario 4: Policy Includes Incorrect Wildcards**  
+**Symptom:** User is denied access for `app-database/creds/dev`, but the policy includes `app-database/*`.  
+**Root Cause:** Wildcard does not match nested paths as expected.  
+**Resolution:**  
+1. Modify the policy to explicitly include the required path.  
+   ```hcl
+   path "app-database/creds/dev" {
+     capabilities = ["read", "list"]
+   }
+   ```  
+2. Reapply the policy and test access.  
+
+---
+
+
+This SOP provides a structured approach to troubleshooting and resolving Vault policy misconfigurations while empowering users to understand and fix related access issues independently.
