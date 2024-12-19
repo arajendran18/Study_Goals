@@ -1,0 +1,179 @@
+Enhanced Resolution Framework for Vault: Improving Support Request Handling and Operational Efficiency
+
+Overview
+
+This document outlines the systematic approach undertaken to improve the handling of support requests and operational efficiency within the Vault infrastructure. The stages detailed include observation, identification, analysis, visualization, ideation, consultation, planning, and execution.
+
+1. Discovery
+
+Objective: Observe and collect data on various issues reported by application teams.
+
+Activities:
+
+Observation Period: From April 1, 2024, to December 20, 2024.
+
+Data Sources:
+
+Conversations in the ESMS General Teams channel.
+
+Activity notifications.
+
+Shared Merge Requests.
+
+Request summaries and descriptions.
+
+Data Collection:
+
+Screenshots of Vault UI access issue-related conversations.
+
+Detailed notes on notifications and summaries of requests.
+
+2. Identification
+
+Objective: Categorize the types of requests reported.
+
+Activities:
+
+Categorization Process:
+
+Screenshots and conversations were analyzed.
+
+Issues were grouped into categories based on their nature and frequency.
+
+3. Analysis
+
+Objective: Analyze the data to identify top contributors to reported issues.
+
+Findings:
+
+Top Contributor: Vault UI access issues.
+
+Major Cause:
+
+Documented various scenarios and root causes on a Confluence page.
+
+Analysis Tools: Detailed examination of request types, causes, and trends.
+
+4. Visualization
+
+Objective: Create an Excel dashboard to present data in an understandable format.
+
+Dashboard Insights:
+
+Overall Trends:
+
+Total Merge Requests (MR).
+
+Breakdown of other requests by type.
+
+Issue Types and Counts (Bar Diagram):
+
+Vault UI Access Issues: 40%.
+
+General Queries: 13%.
+
+JWT Auth: 17%.
+
+Kubernetes Auth: 7%.
+
+Pipeline Failures: 4%.
+
+SNOW Form Issue: 4%.
+
+Vault CLI Issue: 3%.
+
+Vault Intermittent Issue: 5%.
+
+Vault License Issue: 3%.
+
+AppRole Auth: 1%.
+
+Audit Request: 1%.
+
+AWS Auth: 1%.
+
+Vault UI Access Issues Sub-Categories:
+
+User-Specific Issues: 27%.
+
+Teams-Level Issues: 21%.
+
+Authentication Issues: 14%.
+
+Vault-Specific Issues: 13%.
+
+Policy and Permission Issues: 9%.
+
+Path-Specific Issues: 7%.
+
+Environment-Specific Issues: 5%.
+
+Configuration and Maintenance Issues: 2%.
+
+User Errors: 2%.
+
+Monthly Trends:
+
+Issue counts by month.
+
+High activity correlation with increased reported issues (e.g., July 2024).
+
+5. Ideation
+
+Objective: Develop workflows to address major issue scenarios.
+
+Activities:
+
+Proposed a SNOW automation workflow for operational support.
+
+Feedback Received:
+
+SNOW was deemed unsuitable by the team.
+
+Alternative operational control solutions were recommended.
+
+6. Consultation
+
+Objective: Gather feedback from project stakeholders.
+
+Activities:
+
+One-on-One Meetings: Conducted with:
+
+Ashok, Siva, Benjamin, Mani, and Dawas.
+
+Feedback Summary:
+
+Suggestions to improve workflow ideation quality.
+
+7. Planning
+
+Objective: Identify and plan the creation of required runbooks.
+
+Activities:
+
+Compiled a list of top contributors needing runbooks.
+
+Prioritized based on impact and frequency.
+
+8. Execution
+
+Objective: Develop and refine runbooks for operational support.
+
+Activities:
+
+Runbook Creation: Drafted for each identified scenario.
+
+Feedback: Shared drafts with application teams and the ESMS team for review and refinement.
+
+Conclusion
+
+By following this structured approach, we successfully identified, analyzed, and addressed key challenges in Vault operations. The creation of targeted runbooks ensures enhanced support handling and operational efficiency moving forward.
+
+Next Steps
+
+Finalize runbooks based on team feedback.
+
+Conduct training sessions for application teams.
+
+Implement a monitoring framework to continually improve operational processes.
