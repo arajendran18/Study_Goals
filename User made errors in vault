@@ -1,238 +1,177 @@
-Here are small solutions for each of the common user errors while accessing Vault:
-
----
-
-### **1. Incorrect URL Format**
-**Issue**: Missing protocol or using the wrong protocol (`http` vs. `https`).  
-**Solution**: Always include the full URL with the correct protocol. Example:  
-```bash
-export VAULT_ADDR="http://13.232.30.155:8200"
-```
-If using HTTPS, ensure that TLS is configured properly in Vault.
-
----
-
-### **2. Typos in Paths**
-**Issue**: Typing an incorrect or invalid path.  
-**Solution**: Use tab completion or refer to the correct path in the Vault UI or documentation. Example:  
-```bash
-vault read aws/creds/my-role
-```
-
----
-
-### **3. Case Sensitivity Issues**  
-**Issue**: Typing paths with incorrect case (e.g., `AWS/Creds/*` instead of `aws/creds/*`).  
-**Solution**: Double-check the exact path in the Vault UI or CLI with `vault list`. Vault paths are case-sensitive.
-
----
-
-### **4. Trailing Slashes**  
-**Issue**: Adding or omitting trailing slashes inconsistently.  
-**Solution**: Avoid trailing slashes in paths unless explicitly required.  
-Correct:  
-```bash
-vault list aws/creds
-```
-Avoid:  
-```bash
-vault list aws/creds/
-```
-
----
-
-### **5. Using Incorrect Tokens**  
-**Issue**: Using expired, revoked, or improperly copied tokens.  
-**Solution**:  
-- Always generate a fresh token using an appropriate auth method.  
-- Avoid copying tokens with leading or trailing spaces.  
-Example:  
-```bash
-vault login -method=aws role=my-role
-```
-
----
-
-### **6. Incorrect CLI Commands**  
-**Issue**: Using incorrect commands for the secret engine version.  
-**Solution**: Confirm the version of the secret engine (KV v1 vs. v2) and use the correct command:  
-- For KV v2:  
-  ```bash
-  vault kv get secret/data/my-secret
-  ```
-- For KV v1:  
-  ```bash
-  vault kv get secret/my-secret
-  ```
-
----
-
-### **7. Misconfigured Environment Variables**  
-**Issue**: Incorrectly setting environment variables like `VAULT_ADDR` or `VAULT_TOKEN`.  
-**Solution**:  
-- Verify the variables using `echo $VAULT_ADDR` or `echo $VAULT_TOKEN`.  
-- Example of setting them:  
-  ```bash
-  export VAULT_ADDR="http://13.232.30.155:8200"
-  export VAULT_TOKEN="your-token-here"
-  ```
-
----
-
-### **8. Invalid JSON Payloads**  
-**Issue**: Sending malformed JSON in API requests.  
-**Solution**: Validate JSON payloads using a linter or tools like [JSONLint](https://jsonlint.com).  
-Correct JSON Example:  
-```json
-{
-  "policy": "read",
-  "path": "aws/creds/*"
-}
-```
-
----
-
-### **9. Confusing Auth Methods**  
-**Issue**: Using incorrect commands or parameters for a specific auth method.  
-**Solution**: Use the correct method and options based on documentation:  
-- For AWS IAM:  
-  ```bash
-  vault login -method=aws role=my-role
-  ```
-- For AppRole:  
-  ```bash
-  vault write auth/approle/login role_id=my-role-id secret_id=my-secret-id
-  ```
-
----
-
-### **10. Wrong Login Parameters**  
-**Issue**: Providing invalid role names or mount points.  
-**Solution**: List the available roles or mount points before attempting login.  
-Example:  
-```bash
-vault list auth/aws/role
-vault login -method=aws role=my-correct-role
-```
-
----
-
-### **11. Skipping Namespace for Multi-Namespace Setups**  
-**Issue**: Forgetting the namespace in multi-namespace Vault setups.  
-**Solution**: Include the namespace header or set the environment variable:  
-```bash
-export VAULT_NAMESPACE="my-namespace"
-```
-Or include it in API headers:  
-```bash
--H "X-Vault-Namespace: my-namespace"
-```
-
----
-
-### **12. Incorrect API Versions**  
-**Issue**: Using `/v1/` for newer versions of Vault or missing it for older ones.  
-**Solution**: Verify the Vault version and API structure in the [API documentation](https://developer.hashicorp.com/vault/api-docs).  
-Correct Example:  
-```bash
-curl -X GET $VAULT_ADDR/v1/aws/creds/my-role
-```
+Here are the **correct** and **wrong** usage examples for each of the 11 common Vault errors:
 
 ---
 
 ### **1. Typo in Vault Path**  
 - **Description:**  
-  Users often mistype Vault paths (e.g., `aws/cred/my-role` instead of `aws/creds/my-role`). This leads to errors when trying to access secrets.  
-- **Troubleshooting:**  
-  - Double-check the Vault path for typos.  
-  - Use `vault list` to explore available paths and confirm the correct one.
+  Users often mistype Vault paths, leading to errors when trying to access secrets. Vault paths are case-sensitive and must be accurate.
+
+- **Correct Usage:**
+  ```bash
+  vault read aws/creds/my-role
+  ```
+- **Wrong Usage:**
+  ```bash
+  vault read aws/cred/my-role  # 'cred' instead of 'creds'
+  ```
 
 ---
 
 ### **2. Incorrect Slash Usage**  
 - **Description:**  
-  Using or omitting trailing slashes (`/`) in Vault paths incorrectly can cause errors or unexpected results.  
-- **Troubleshooting:**  
-  - Avoid adding unnecessary slashes in paths.  
-  - Remove trailing slashes unless required, e.g., use `vault read aws/creds/my-role` instead of `vault read aws/creds/my-role/`.  
+  Using trailing slashes incorrectly can cause Vault to misinterpret paths or behave unexpectedly.
+
+- **Correct Usage:**
+  ```bash
+  vault read aws/creds/my-role  # No trailing slash unless listing sub-paths
+  ```
+- **Wrong Usage:**
+  ```bash
+  vault read aws/creds/my-role/  # Trailing slash used unnecessarily
+  ```
 
 ---
 
 ### **3. Wrong Role Name**  
 - **Description:**  
-  Users specify an incorrect role name (e.g., `myrole` instead of `my-role`) when accessing AWS secrets or roles.  
-- **Troubleshooting:**  
-  - Verify the correct role name in the Vault UI or CLI using `vault list`.  
-  - Ensure the payload or CLI command matches the role name exactly.
+  Using an incorrect role name (e.g., `myrole` instead of `my-role`) when accessing AWS secrets or roles will result in a failure to authenticate or fetch credentials.
+
+- **Correct Usage:**
+  ```bash
+  vault read aws/creds/my-role
+  ```
+- **Wrong Usage:**
+  ```bash
+  vault read aws/creds/myrole  # Incorrect role name
+  ```
 
 ---
 
 ### **4. Wrong Environment URL**  
 - **Description:**  
-  Users mistakenly use the non-production Vault URL for production tasks or vice versa.  
-- **Troubleshooting:**  
-  - Confirm the Vault URL before running commands (e.g., `http://vault-prd` for production).  
-  - Use environment variables to manage URLs securely.
+  Using the wrong Vault environment URL (e.g., using the non-production URL for production) leads to accessing the wrong configuration or secrets.
+
+- **Correct Usage:**
+  ```bash
+  export VAULT_ADDR="http://vault-prd.example.com:8200"
+  vault read aws/creds/my-role  # Correct Vault URL for production
+  ```
+- **Wrong Usage:**
+  ```bash
+  export VAULT_ADDR="http://vault-npd.example.com:8200"
+  vault read aws/creds/my-role  # Wrong Vault URL (non-production for production tasks)
+  ```
 
 ---
 
 ### **5. Incorrect Authentication Role**  
 - **Description:**  
-  Using the wrong Vault auth role for production or non-production environments leads to authentication failure.  
-- **Troubleshooting:**  
-  - Verify the role with the Vault admin.  
-  - For example, use `esms-prd-lambda-aws-secret-validation` for production and `esms-npd-lambda-aws-secret-validation` for non-production.
+  Using the wrong Vault authentication role (e.g., `esms-npd-lambda-aws-secret-validation` for production) causes authentication failure.
+
+- **Correct Usage:**
+  ```bash
+  vault auth login -method=aws role=esms-prd-lambda-aws-secret-validation
+  ```
+- **Wrong Usage:**
+  ```bash
+  vault auth login -method=aws role=esms-npd-lambda-aws-secret-validation  # Non-production role in production
+  ```
 
 ---
 
 ### **6. Using Expired Token**  
 - **Description:**  
-  Tokens used for authentication expire, causing access issues if not renewed.  
-- **Troubleshooting:**  
-  - Check token validity with `vault token lookup`.  
-  - Renew or request a new token as needed.
+  Tokens have a limited TTL (Time To Live), and once expired, they cause authentication failures.
+
+- **Correct Usage:**
+  ```bash
+  vault token lookup  # Check token validity
+  ```
+- **Wrong Usage:**
+  ```bash
+  vault read aws/creds/my-role  # Using expired token without checking
+  ```
 
 ---
 
 ### **7. Incorrect IAM Authentication**  
 - **Description:**  
-  Users incorrectly configure or provide IAM credentials for AWS authentication in Vault.  
-- **Troubleshooting:**  
-  - Confirm the IAM role is correctly configured in AWS and linked to Vault.  
-  - Validate the AWS metadata is accessible if using an EC2 instance.
+  If IAM credentials or metadata are incorrectly configured, Vault will fail to authenticate.
+
+- **Correct Usage:**
+  ```bash
+  vault auth enable aws
+  vault write auth/aws/role/my-role auth_type="iam" policies="default"
+  ```
+- **Wrong Usage:**
+  ```bash
+  vault auth enable aws
+  vault write auth/aws/role/my-role auth_type="incorrect"  # Wrong auth_type
+  ```
 
 ---
 
 ### **8. Insufficient Permissions for Path**  
 - **Description:**  
-  Users try to access a path for which their Vault role lacks permissions, leading to `403 Forbidden` errors.  
-- **Troubleshooting:**  
-  - Check assigned policies using `vault read sys/policies/acl/<policy-name>`.  
-  - Request access if necessary.
+  When a Vault role does not have the necessary permissions for a path, users receive a `403 Forbidden` error.
+
+- **Correct Usage:**
+  ```bash
+  vault read aws/creds/my-role  # Ensure role has permission to read from this path
+  ```
+- **Wrong Usage:**
+  ```bash
+  vault read aws/creds/my-role  # Role doesn't have permission (403 Forbidden)
+  ```
 
 ---
 
 ### **9. Unsupported Auth Method**  
 - **Description:**  
-  Users attempt to log in using an unsupported or unconfigured authentication method (e.g., GitHub auth when only AppRole is set up).  
-- **Troubleshooting:**  
-  - Verify supported methods with the Vault admin or `vault auth list`.  
-  - Switch to a configured auth method like AppRole or AWS IAM.
+  Attempting to use an unsupported or unconfigured authentication method (e.g., GitHub when only AppRole is enabled) will result in authentication failure.
+
+- **Correct Usage:**
+  ```bash
+  vault auth enable approle
+  vault login -method=approle role_id="your-role-id" secret_id="your-secret-id"
+  ```
+- **Wrong Usage:**
+  ```bash
+  vault auth enable github
+  vault login -method=github  # GitHub auth not enabled
+  ```
 
 ---
 
 ### **10. Missing Secrets Engine Mount**  
 - **Description:**  
-  Users try to access secrets in an engine that isn’t mounted (e.g., `aws/creds/my-role` when `aws/` isn’t mounted).  
-- **Troubleshooting:**  
-  - Check mounted engines with `vault list sys/mounts`.  
-  - Request the admin to mount the necessary secrets engine.
+  Attempting to access secrets from an engine that is not mounted will result in an error.
+
+- **Correct Usage:**
+  ```bash
+  vault secrets enable -path=aws aws
+  vault read aws/creds/my-role  # Ensure the AWS secrets engine is enabled
+  ```
+- **Wrong Usage:**
+  ```bash
+  vault read aws/creds/my-role  # Engine not mounted (404 Not Found)
+  ```
 
 ---
 
 ### **11. Incorrect Payload Structure**  
 - **Description:**  
-  Providing an invalid JSON payload structure for requests (e.g., missing required keys) leads to errors.  
-- **Troubleshooting:**  
-  - Verify the payload structure in the Vault documentation or with the API specs.  
-  - Test the payload with a JSON validator before sending the request.  
+  Sending an invalid JSON payload structure can result in errors or incorrect behavior.
+
+- **Correct Usage:**
+  ```bash
+  vault write aws/creds/my-role access_key="AKIA..." secret_key="SECRET_KEY"  # Valid JSON structure
+  ```
+- **Wrong Usage:**
+  ```bash
+  vault write aws/creds/my-role access_key="AKIA..."  # Missing required secret_key
+  ```
+
+---
+
+Each point above shows how small mistakes in usage (such as incorrect syntax or path) can lead to authentication or access issues in Vault. It’s important to follow the correct format for each interaction to ensure smooth operation.
