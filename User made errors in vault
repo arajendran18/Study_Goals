@@ -1,0 +1,143 @@
+Here are small solutions for each of the common user errors while accessing Vault:
+
+---
+
+### **1. Incorrect URL Format**
+**Issue**: Missing protocol or using the wrong protocol (`http` vs. `https`).  
+**Solution**: Always include the full URL with the correct protocol. Example:  
+```bash
+export VAULT_ADDR="http://13.232.30.155:8200"
+```
+If using HTTPS, ensure that TLS is configured properly in Vault.
+
+---
+
+### **2. Typos in Paths**
+**Issue**: Typing an incorrect or invalid path.  
+**Solution**: Use tab completion or refer to the correct path in the Vault UI or documentation. Example:  
+```bash
+vault read aws/creds/my-role
+```
+
+---
+
+### **3. Case Sensitivity Issues**  
+**Issue**: Typing paths with incorrect case (e.g., `AWS/Creds/*` instead of `aws/creds/*`).  
+**Solution**: Double-check the exact path in the Vault UI or CLI with `vault list`. Vault paths are case-sensitive.
+
+---
+
+### **4. Trailing Slashes**  
+**Issue**: Adding or omitting trailing slashes inconsistently.  
+**Solution**: Avoid trailing slashes in paths unless explicitly required.  
+Correct:  
+```bash
+vault list aws/creds
+```
+Avoid:  
+```bash
+vault list aws/creds/
+```
+
+---
+
+### **5. Using Incorrect Tokens**  
+**Issue**: Using expired, revoked, or improperly copied tokens.  
+**Solution**:  
+- Always generate a fresh token using an appropriate auth method.  
+- Avoid copying tokens with leading or trailing spaces.  
+Example:  
+```bash
+vault login -method=aws role=my-role
+```
+
+---
+
+### **6. Incorrect CLI Commands**  
+**Issue**: Using incorrect commands for the secret engine version.  
+**Solution**: Confirm the version of the secret engine (KV v1 vs. v2) and use the correct command:  
+- For KV v2:  
+  ```bash
+  vault kv get secret/data/my-secret
+  ```
+- For KV v1:  
+  ```bash
+  vault kv get secret/my-secret
+  ```
+
+---
+
+### **7. Misconfigured Environment Variables**  
+**Issue**: Incorrectly setting environment variables like `VAULT_ADDR` or `VAULT_TOKEN`.  
+**Solution**:  
+- Verify the variables using `echo $VAULT_ADDR` or `echo $VAULT_TOKEN`.  
+- Example of setting them:  
+  ```bash
+  export VAULT_ADDR="http://13.232.30.155:8200"
+  export VAULT_TOKEN="your-token-here"
+  ```
+
+---
+
+### **8. Invalid JSON Payloads**  
+**Issue**: Sending malformed JSON in API requests.  
+**Solution**: Validate JSON payloads using a linter or tools like [JSONLint](https://jsonlint.com).  
+Correct JSON Example:  
+```json
+{
+  "policy": "read",
+  "path": "aws/creds/*"
+}
+```
+
+---
+
+### **9. Confusing Auth Methods**  
+**Issue**: Using incorrect commands or parameters for a specific auth method.  
+**Solution**: Use the correct method and options based on documentation:  
+- For AWS IAM:  
+  ```bash
+  vault login -method=aws role=my-role
+  ```
+- For AppRole:  
+  ```bash
+  vault write auth/approle/login role_id=my-role-id secret_id=my-secret-id
+  ```
+
+---
+
+### **10. Wrong Login Parameters**  
+**Issue**: Providing invalid role names or mount points.  
+**Solution**: List the available roles or mount points before attempting login.  
+Example:  
+```bash
+vault list auth/aws/role
+vault login -method=aws role=my-correct-role
+```
+
+---
+
+### **11. Skipping Namespace for Multi-Namespace Setups**  
+**Issue**: Forgetting the namespace in multi-namespace Vault setups.  
+**Solution**: Include the namespace header or set the environment variable:  
+```bash
+export VAULT_NAMESPACE="my-namespace"
+```
+Or include it in API headers:  
+```bash
+-H "X-Vault-Namespace: my-namespace"
+```
+
+---
+
+### **12. Incorrect API Versions**  
+**Issue**: Using `/v1/` for newer versions of Vault or missing it for older ones.  
+**Solution**: Verify the Vault version and API structure in the [API documentation](https://developer.hashicorp.com/vault/api-docs).  
+Correct Example:  
+```bash
+curl -X GET $VAULT_ADDR/v1/aws/creds/my-role
+```
+
+---
+
+Would you like help implementing automated checks for these scenarios?
