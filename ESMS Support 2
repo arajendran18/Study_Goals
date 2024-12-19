@@ -1,0 +1,137 @@
+# Proposal Document: Enhancing Support Request Handling and Operational Efficiency
+
+## Objective
+To improve the handling of support requests reported by various application teams and enhance operational efficiency within the ESMS team by identifying recurring issues, analyzing their root causes, and implementing structured resolutions.
+
+---
+
+## Stages of Improvement
+
+### 1. Discovery
+**Observation Period:** April 1, 2024 – December 20, 2024
+
+- **Approach:**
+  - Observed conversations in the ESMS General Teams channel.
+  - Collected data on recurring issues by capturing screenshots of Vault UI access issue-related conversations.
+  - Monitored activity notifications, shared merge requests (MRs), and request summaries/descriptions.
+
+- **Outcome:**
+  - Gained a comprehensive understanding of the issues reported by application teams.
+
+---
+
+### 2. Identification
+- **Methodology:**
+  - Categorized issue types using screenshots of Teams conversations.
+
+- **Identified Categories:**
+  - Vault UI Access Issues
+  - General Queries
+  - JWT Authentication Issues
+  - Kubernetes Authentication Issues
+  - Pipeline Failures
+  - SNOW Form Issues
+  - Vault CLI Issues
+  - Vault Intermittent Issues
+  - Vault License Issues
+  - AppRole Authentication Issues
+  - Audit Requests
+  - AWS Authentication Issues
+
+---
+
+### 3. Analysis
+- **Top Contributor Identified:**
+  - Vault UI Access Issues, contributing to 40% of the total requests.
+
+- **Deep Dive Analysis:**
+  - Documented causes and scenarios for Vault UI Access Issues on the Confluence page.
+  - Sub-categorized the Vault UI Access Issues:
+    - User-Specific Issues: 27%
+    - Team-Level Issues: 21%
+    - Authentication Issues: 14%
+    - Vault-Specific Issues: 13%
+    - Policy & Permission Issues: 9%
+    - Path-Specific Issues: 7%
+    - Environment-Specific Issues: 5%
+    - Configuration & Maintenance Issues: 2%
+    - User Errors: 2%
+
+- **Activity Impact Analysis:**
+  - Correlated issue trends with activity notifications (e.g., July 2024 had heightened activities and a higher number of reported issues).
+
+---
+
+### 4. Visualization
+- **Tools:** Excel Dashboard
+
+- **Visualized Insights:**
+  - Total Merge Requests (MRs) and other requests.
+  - Distribution of issue types with a bar diagram.
+  - Month-wise issue trend analysis.
+  - Detailed breakdown of Vault UI Access Issues (40% of the total).
+
+---
+
+### 5. Ideation
+- **Proposed Solution:**
+  - Suggested a SNOW automation workflow for addressing major scenarios.
+  - Feedback received: SNOW was deemed unsuitable for controlling operations. A new approach was recommended.
+
+---
+
+### 6. Consultation
+- **Stakeholders Consulted:**
+  - Ashok, Siva, Benjamin, Mani, and Dawas
+
+- **Feedback:**
+  - Focus on improving quality through actionable and controlled workflows.
+  - Emphasis on creating detailed runbooks for top contributors.
+
+---
+
+### 7. Planning
+- **Next Steps:**
+  - Gather the list of required runbooks based on identified top contributors.
+
+---
+
+### 8. Execution
+- **Implementation:**
+  - Create detailed runbooks addressing:
+    - Vault UI Access Issues
+    - General Queries
+    - JWT Authentication Issues
+    - Kubernetes Authentication Issues
+  - Collect feedback from application teams and the ESMS team to refine the runbooks.
+
+---
+
+## Conclusion
+By following the outlined stages, the Enhanced Resolution Framework ensures:
+1. Systematic identification and resolution of recurring issues.
+2. Improved operational efficiency.
+3. A repository of actionable runbooks to address top contributors, such as Vault UI Access Issues, streamlining support processes and minimizing downtime.
+
+---
+
+## Proposed Timeline
+| Stage            | Timeline             |
+|------------------|----------------------|
+| Discovery        | Completed (Apr-Dec) |
+| Identification   | Completed           |
+| Analysis         | Completed           |
+| Visualization    | Completed           |
+| Ideation         | Completed           |
+| Consultation     | Completed           |
+| Planning         | Jan 2025 (Week 1)   |
+| Execution        | Jan 2025 (Week 2-4) |
+
+---
+
+## Next Steps
+1. Finalize the list of runbooks.
+2. Initiate creation and review cycles.
+3. Share runbooks with stakeholders for feedback.
+4. Implement the refined solutions in day-to-day operations.
+
