@@ -1,0 +1,143 @@
+ Here’s a detailed runbook for resolving policy and permission issues in Vault:  
+
+---
+
+### **1. Policy Mismatch Between Users**
+#### **Scenario**
+- **Problem:** User A cannot access a secret path (`secret/data/projectA`) while User B can, even though both belong to the same team.  
+- **Cause:** User A's policy lacks permissions or contains incorrect paths.  
+
+#### **Correct Usage Example**
+- Policy for User B:
+  ```hcl
+  path "secret/data/projectA" {
+    capabilities = ["read", "list"]
+  }
+  ```
+- Policy for User A should match:
+  ```hcl
+  path "secret/data/projectA" {
+    capabilities = ["read", "list"]
+  }
+  ```
+
+#### **Incorrect Usage Example**
+- User A's policy:
+  ```hcl
+  path "secret/data/projectB" {
+    capabilities = ["read", "list"]
+  }
+  ```
+
+#### **Resolution Steps**
+1. **Verify Policy Assignments:**
+   - Run `vault read auth/token/lookup` for both users to identify the attached policies.
+   
+2. **Compare Policies:**
+   - Retrieve policies using `vault policy read <policy_name>` and check for discrepancies.
+
+3. **Update Policy:**
+   - Correct User A's policy to match User B's access using `vault policy write <policy_name> <policy_file>`.
+
+4. **Test Access:**
+   - Log in as User A and verify access using `vault kv get secret/data/projectA`.
+
+---
+
+### **2. Overlapping Policies Create Conflicting Access**
+#### **Scenario**
+- **Problem:** User C has two policies:
+  - Policy 1 allows access to `secret/data/projectC`.
+  - Policy 2 denies access to all paths using a wildcard (`path "*" { capabilities = ["deny"] }`).  
+- **Cause:** A deny rule in one policy overrides allow rules in another.  
+
+#### **Correct Usage Example**
+- Combine allow and deny logic in a single policy to avoid conflicts:
+  ```hcl
+  path "secret/data/projectC" {
+    capabilities = ["read", "list"]
+  }
+  path "*" {
+    capabilities = ["deny"]
+  }
+  ```
+
+#### **Incorrect Usage Example**
+- Two separate policies:
+  - Policy 1:
+    ```hcl
+    path "secret/data/projectC" {
+      capabilities = ["read", "list"]
+    }
+    ```
+  - Policy 2:
+    ```hcl
+    path "*" {
+      capabilities = ["deny"]
+    }
+    ```
+
+#### **Resolution Steps**
+1. **Identify Policies:**
+   - Use `vault token lookup` to identify policies attached to the token.  
+
+2. **Evaluate Policy Rules:**
+   - Check each policy with `vault policy read <policy_name>` to find conflicting rules.
+
+3. **Consolidate Policies:**
+   - Merge the rules into a single policy or adjust the deny rule in Policy 2.
+
+4. **Test Access:**
+   - Validate with `vault kv get secret/data/projectC` to ensure correct access.
+
+---
+
+### **3. Wildcard Mismatch in Policy Paths**
+#### **Scenario**
+- **Problem:** Policy for a team includes a wildcard (`secret/data/*`), but users cannot access `secret/data/projectD` due to a misconfiguration.  
+- **Cause:** Wildcard is incorrectly placed or too restrictive.  
+
+#### **Correct Usage Example**
+- Policy with correct wildcard:
+  ```hcl
+  path "secret/data/*" {
+    capabilities = ["read", "list"]
+  }
+  ```
+
+#### **Incorrect Usage Example**
+- Misconfigured wildcard:
+  ```hcl
+  path "secret/data/project*" {
+    capabilities = ["read", "list"]
+  }
+  ```
+  - This excludes paths like `secret/data/projectD/subfolder`.
+
+#### **Resolution Steps**
+1. **Analyze the Path:**
+   - Check the structure of the secrets using `vault kv list <path>` to understand the hierarchy.
+
+2. **Update Policy:**
+   - Adjust the wildcard to cover all intended paths, e.g., `secret/data/*`.
+
+3. **Test Access:**
+   - Use `vault kv get secret/data/projectD` to confirm access.
+
+4. **Apply Scoped Wildcards (if needed):**
+   - To limit access to a subset:
+     ```hcl
+     path "secret/data/projectD/*" {
+       capabilities = ["read", "list"]
+     }
+     ```
+
+---
+
+### **Additional Best Practices**
+- **Audit Logs:** Check Vault audit logs for unauthorized access attempts and policy evaluation failures.  
+- **Version Control:** Maintain policies in a version-controlled repository (e.g., Git).  
+- **Test Policies:** Use a staging environment to test changes before applying them in production.  
+- **Documentation:** Clearly document policy scopes and maintain a record of policy changes.  
+
+Let me know if you'd like to elaborate further on any step!
