@@ -1,0 +1,7 @@
+curl --request POST \
+  --url http://127.0.0.1:8200/v1/auth/jwt/login \
+  --header "Content-Type: application/json" \
+  --data '{
+    "jwt": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.s5VpU3K8pdXHf4jtlTZmPZWhQhYbXLxJ4RvZVmeVioA",
+    "role": "my-jwt-role"
+  }'
