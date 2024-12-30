@@ -1,36 +1,60 @@
-Here’s a Standard Operating Procedure (SOP) for troubleshooting and resolving **Vault Path-Specific Issues**:
+### **Runbook: Resolving Vault Path-Specific Issues**
 
 ---
 
-## **SOP: Resolving Vault Path-Specific Issues**
+#### **Title:**  
+Resolving Path-Specific Issues in HashiCorp Vault  
 
-### **1. Access Denied for Specific Paths While Others Work**
+---
 
-#### **Symptoms:**
-- User receives an "access denied" error when accessing specific paths.
-- Other paths under the same Vault role/policy work as expected.
+#### **Purpose:**  
+This runbook provides step-by-step instructions to resolve common Vault issues related to access denial, missing paths, and restricted permissions for specific paths.  
 
-#### **Resolution Steps:**
+---
 
-**a. Using Vault UI:**
-1. Navigate to the **Access Policies** section in the Vault UI.
-2. Identify the policy attached to the user or team’s role.
-3. Review the policy to ensure it includes the necessary path with correct capabilities (`read`, `list`, etc.).
-4. If missing, add the required path and capabilities.
+#### **Scope:**  
+Applies to administrators managing HashiCorp Vault via the UI, CLI, or API.
+
+---
+
+#### **Prerequisites:**  
+1. Access to Vault with appropriate administrative privileges.  
+2. The Vault token with `read`, `update`, and `list` capabilities for policies and secrets management.  
+3. Tools to access Vault:
+   - UI access via a browser.
+   - CLI installed and configured with Vault endpoint.
+   - API tools like `curl` or `Postman`.  
+
+---
+
+### **1. Issue: Access Denied for Specific Paths While Others Work**
+
+#### **Description:**  
+A user receives an "access denied" error when accessing specific paths while having access to others.  
+
+---
+
+#### **Resolution Steps:**  
+
+##### **Using Vault UI:**  
+1. Go to **Access Policies** in the Vault UI.  
+2. Locate the policy attached to the user or team.  
+3. Confirm that the path has the required capabilities (`read`, `list`, etc.).  
+4. If not, add the path:
    - Example:  
-     ```hcl
+     ```
      path "secret/data/specific-path/*" {
        capabilities = ["read", "list"]
      }
      ```
-5. Save and apply the changes.
+5. Save and apply the changes.  
 
-**b. Using Vault CLI:**
-1. List the policies attached to the user or team role:
+##### **Using Vault CLI:**  
+1. Retrieve the policies for the role:
    ```bash
    vault read auth/<auth-method>/role/<role-name>
    ```
-2. Inspect the policy for the required path:
+2. Inspect the policy for required path permissions:
    ```bash
    vault policy read <policy-name>
    ```
@@ -39,16 +63,16 @@ Here’s a Standard Operating Procedure (SOP) for troubleshooting and resolving 
    vault policy write <policy-name> <updated-policy-file.hcl>
    ```
 
-**c. Using Vault API:**
-1. Retrieve the role's policies:
+##### **Using Vault API:**  
+1. Check the policies associated with the role:
    ```bash
    curl -s --header "X-Vault-Token: <token>" http://<vault-url>:8200/v1/auth/<auth-method>/role/<role-name>
    ```
-2. Check the policy details:
+2. Review the policy:
    ```bash
    curl -s --header "X-Vault-Token: <token>" http://<vault-url>:8200/v1/sys/policies/acl/<policy-name>
    ```
-3. Update the policy via API:
+3. Update the policy if required:
    ```bash
    curl --header "X-Vault-Token: <token>" \
         --request PUT \
@@ -58,25 +82,26 @@ Here’s a Standard Operating Procedure (SOP) for troubleshooting and resolving 
 
 ---
 
-### **2. Path Not Found in Vault**
+### **2. Issue: Path Not Found in Vault**
 
-#### **Symptoms:**
-- Error: "path not found."
-- Users cannot access or list a path they believe should exist.
+#### **Description:**  
+A user encounters "path not found" when attempting to access a secret or secrets engine.  
 
-#### **Resolution Steps:**
+---
 
-**a. Using Vault UI:**
-1. Go to the **Secrets Engines** section.
-2. Verify that the secrets engine for the path exists and is correctly mounted.
-3. If not mounted, create a new secrets engine with the appropriate mount path.
+#### **Resolution Steps:**  
 
-**b. Using Vault CLI:**
+##### **Using Vault UI:**  
+1. Navigate to **Secrets Engines** in the UI.  
+2. Verify if the required secrets engine is mounted.  
+3. If not, mount the engine with the appropriate path and type.  
+
+##### **Using Vault CLI:**  
 1. List all mounted secrets engines:
    ```bash
    vault secrets list
    ```
-2. Verify the mount point for the required path. If missing, mount the secrets engine:
+2. If the path is missing, mount the engine:
    ```bash
    vault secrets enable -path=<path> <engine-type>
    ```
@@ -85,12 +110,12 @@ Here’s a Standard Operating Procedure (SOP) for troubleshooting and resolving 
    vault secrets enable -path=secret kv
    ```
 
-**c. Using Vault API:**
-1. Retrieve the list of secrets engines:
+##### **Using Vault API:**  
+1. Retrieve the list of mounts:
    ```bash
    curl -s --header "X-Vault-Token: <token>" http://<vault-url>:8200/v1/sys/mounts
    ```
-2. If the required path is not present, mount the secrets engine:
+2. Mount the secrets engine:
    ```bash
    curl --header "X-Vault-Token: <token>" \
         --request POST \
@@ -100,46 +125,46 @@ Here’s a Standard Operating Procedure (SOP) for troubleshooting and resolving 
 
 ---
 
-### **3. User or Team Can List Secrets But Cannot Read Them**
+### **3. Issue: User or Team Can List Secrets but Cannot Read Them**
 
-#### **Symptoms:**
-- Users can see a list of secrets but cannot read the secret contents.
-- Error: "permission denied."
+#### **Description:**  
+Users can list secrets under a specific path but receive "permission denied" errors when attempting to read them.  
 
-#### **Resolution Steps:**
+---
 
-**a. Using Vault UI:**
-1. Navigate to the **Access Policies** section.
-2. Review the policy attached to the user or team to ensure it includes `read` capabilities for the required paths.
+#### **Resolution Steps:**  
+
+##### **Using Vault UI:**  
+1. Go to **Access Policies** in the UI.  
+2. Confirm the policy includes `read` capabilities for the required paths.  
    - Example:
-     ```hcl
+     ```
      path "secret/data/specific-path/*" {
        capabilities = ["read", "list"]
      }
      ```
-3. Update the policy and save changes.
+3. Add or update the policy and save.  
 
-**b. Using Vault CLI:**
-1. Check the policies attached to the user or team:
+##### **Using Vault CLI:**  
+1. Verify policies for the user or team:
    ```bash
    vault read auth/<auth-method>/role/<role-name>
    ```
-2. Inspect the policy details for `read` capability:
+2. Check the policy details:
    ```bash
    vault policy read <policy-name>
    ```
-3. Update the policy if `read` is missing:
+3. Update the policy if needed:
    ```bash
    vault policy write <policy-name> <updated-policy-file.hcl>
    ```
 
-**c. Using Vault API:**
+##### **Using Vault API:**  
 1. Retrieve the policy details:
    ```bash
    curl -s --header "X-Vault-Token: <token>" http://<vault-url>:8200/v1/sys/policies/acl/<policy-name>
    ```
-2. Check for missing `read` capabilities.
-3. Update the policy via API:
+2. Add `read` capability to the required paths and update the policy:
    ```bash
    curl --header "X-Vault-Token: <token>" \
         --request PUT \
@@ -149,11 +174,19 @@ Here’s a Standard Operating Procedure (SOP) for troubleshooting and resolving 
 
 ---
 
-### **General Best Practices**
-1. Always test new policies in a staging environment before applying them in production.
-2. Use token-scoped roles for debugging and ensure appropriate logging is enabled.
-3. Regularly audit policies to identify and rectify overprivileged or missing capabilities.
+#### **Validation:**  
+1. Test access to the specific path using the Vault token associated with the user/team.  
+2. Confirm that users can list and read secrets or access the specified path as required.  
 
 ---
 
-This SOP ensures a structured approach to addressing path-specific issues in Vault through UI, CLI, and API interactions.
+#### **Escalation:**  
+If issues persist after applying these steps, escalate to the Vault administrator or consult HashiCorp support.  
+
+---
+
+#### **Notes:**  
+- Keep logs of changes made to policies for auditing.  
+- Regularly review and optimize policies to ensure security and compliance.  
+
+---
