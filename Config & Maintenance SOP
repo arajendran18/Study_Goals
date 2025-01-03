@@ -1,0 +1,70 @@
+# Vault Configuration or Maintenance Issues - Standard Operating Procedures (SOP)
+
+## 1. Path Temporarily Unavailable Due to Maintenance
+
+### **Issue Description**
+When a specific path in Vault is temporarily unavailable due to scheduled or unscheduled maintenance, users may experience errors such as "path not found" or "path unavailable."
+
+### **Steps to Resolve**
+1. **Identify Maintenance Activity**
+   - Check the maintenance schedule.
+   - Confirm with the team performing maintenance if the downtime was planned or unplanned.
+
+2. **Notify Users**
+   - Inform users about the maintenance and expected downtime.
+   - Provide alternative paths or fallback options if available.
+
+3. **Verify Path Accessibility**
+   - After the maintenance, verify that the path is accessible:
+     ```bash
+     vault read <path>
+     ```
+   - If the path is still unavailable, check Vault logs for errors:
+     ```bash
+     journalctl -u vault | grep <path>
+     ```
+
+4. **Escalate if Necessary**
+   - If the issue persists, escalate to the Vault administrator or support team with logs and error details.
+
+### **Preventive Measures**
+- Ensure all maintenance activities are communicated in advance.
+- Test maintenance in a staging environment before applying changes to production.
+
+---
+
+## 2. Token Invalidated After Vault Was Sealed/Unsealed
+
+### **Issue Description**
+Tokens may become invalid after Vault undergoes a seal/unseal process, especially if Vault is using short-lived tokens.
+
+### **Steps to Resolve**
+1. **Diagnose the Issue**
+   - Verify if the token is expired or invalid using the following command:
+     ```bash
+     vault token lookup <token>
+     ```
+   - Check Vault logs for token-related errors.
+
+2. **Re-authenticate**
+   - Request a new token from your authentication method (e.g., AppRole, LDAP, etc.):
+     ```bash
+     vault login -method=approle role_id=<role_id> secret_id=<secret_id>
+     ```
+
+3. **Update Applications**
+   - Replace the old token with the new token in all client applications or scripts.
+
+4. **Monitor Vault's Seal/Unseal Events**
+   - Check why the seal/unseal process occurred:
+     ```bash
+     journalctl -u vault | grep seal
+     ```
+   - Address the root cause of frequent seal/unseal events.
+
+### **Preventive Measures**
+- Use token renewal mechanisms in applications.
+- Avoid using long-lived tokens unless absolutely necessary.
+
+---
+
