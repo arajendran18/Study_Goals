@@ -1,0 +1,152 @@
+### **Explaining Each Section with Scenario Examples**
+
+#### **Version 1.17**
+
+---
+
+### **1. New Features**
+
+#### **a. Integrated OIDC Support for AWS**
+**What it means**: 
+Vault now supports OpenID Connect (OIDC) for AWS authentication. This allows applications using OIDC tokens to authenticate with Vault to obtain AWS credentials.
+
+**Scenario**:
+- Your company is transitioning from AWS IAM roles to OIDC for authentication.
+- You configure an OIDC provider (e.g., Google Workspace) in Vault.
+- Developers log in using their Google Workspace credentials, and Vault dynamically generates AWS temporary credentials.
+
+**Benefit**:
+Simplifies authentication and removes reliance on static IAM roles or keys.
+
+---
+
+#### **b. Enhanced Performance for DR Replication**
+**What it means**: 
+Vault has improved the speed and efficiency of disaster recovery (DR) replication, ensuring faster data sync between primary and DR clusters.
+
+**Scenario**:
+- Your company runs a Vault primary cluster in **us-east-1** and a DR cluster in **us-west-2**.
+- During a failover test, the DR cluster syncs within 5 minutes (compared to 15 minutes in the previous version), minimizing downtime.
+
+**Benefit**:
+Faster recovery in DR scenarios, ensuring business continuity.
+
+---
+
+### **2. Breaking Changes**
+
+#### **a. Default Storage Backend Timeout Reduced from 30s to 20s**
+**What it means**: 
+Vault now times out backend storage requests faster, which might affect environments with slower storage systems.
+
+**Scenario**:
+- Your Vault uses a Consul backend with high latency during peak traffic.
+- After the upgrade, some storage operations start timing out because the backend takes longer than 20 seconds to respond.
+- You need to manually adjust the timeout back to 30 seconds in the configuration.
+
+**Risk**:
+May cause disruptions in environments with slow backends.
+
+---
+
+### **3. Deprecations**
+
+#### **a. Removed Support for `consul_api` Version Older Than 1.10**
+**What it means**: 
+Vault will no longer work with older versions of the Consul API.
+
+**Scenario**:
+- Your Vault cluster is integrated with Consul 1.9 for service discovery.
+- Post-upgrade, Vault fails to connect to Consul because the version is no longer supported.
+- You must upgrade Consul to version 1.10 or later before upgrading Vault.
+
+**Risk**:
+If you don’t upgrade Consul, Vault services will stop working.
+
+---
+
+### **4. Bug Fixes**
+
+#### **a. Fixed Race Conditions in Raft Storage**
+**What it means**: 
+Vault has resolved issues where multiple simultaneous operations caused data inconsistency in Raft storage.
+
+**Scenario**:
+- Your Vault cluster uses Raft as its storage backend.
+- In the previous version, concurrent writes during high traffic sometimes caused errors.
+- After upgrading, these issues are resolved, and the cluster operates smoothly even under heavy load.
+
+**Benefit**:
+Improved stability in clustered environments.
+
+---
+
+#### **Version 1.18**
+
+---
+
+### **1. New Features**
+
+#### **a. Added Support for AWS Workload Identity Federation (WIF)**
+**What it means**: 
+Applications can now use AWS WIF tokens to authenticate with Vault for dynamic credential generation.
+
+**Scenario**:
+- Your organization adopts AWS WIF to avoid managing long-lived IAM credentials.
+- Applications in EKS use WIF to authenticate with Vault and request temporary AWS credentials.
+- This eliminates the need for manual credential management or hardcoding secrets.
+
+**Benefit**:
+Enhanced security and seamless integration with AWS WIF.
+
+---
+
+#### **b. Introduced Granular Audit Logging for Secrets Engines**
+**What it means**: 
+Vault now provides detailed logging for each secrets engine, making it easier to track access and operations.
+
+**Scenario**:
+- Your compliance team needs detailed logs for audit purposes.
+- You enable granular logging for the AWS secrets engine.
+- Logs now show exactly who accessed which secrets and when, helping with compliance reporting.
+
+**Benefit**:
+Improved transparency and auditability.
+
+---
+
+### **2. Security Updates**
+
+#### **a. Fixed Vulnerabilities in TLS Handling**
+**What it means**: 
+Vault patched vulnerabilities that could expose encrypted communication to attack.
+
+**Scenario**:
+- Your Vault cluster communicates with clients using TLS.
+- Previously, certain TLS configurations were vulnerable to man-in-the-middle (MITM) attacks.
+- After the update, these vulnerabilities are fixed, ensuring secure communication.
+
+**Benefit**:
+Stronger security posture for your Vault setup.
+
+---
+
+### **3. Bug Fixes**
+
+#### **a. Addressed Memory Leak Issues in Auto-Scaling Setups**
+**What it means**: 
+Vault fixed an issue where memory usage increased over time in auto-scaling environments.
+
+**Scenario**:
+- Your organization uses an auto-scaling Vault cluster.
+- In version 1.16, nodes occasionally consumed excessive memory, leading to crashes during high traffic.
+- After upgrading to 1.18, memory usage stabilizes, and nodes no longer crash under load.
+
+**Benefit**:
+Improved reliability and reduced maintenance overhead.
+
+---
+
+### **Summary**
+
+Each change, whether a feature, breaking change, or bug fix, directly impacts specific areas of Vault’s functionality. Carefully reviewing these sections and testing in a staging environment helps ensure a smooth upgrade process and prepares you for any adjustments needed.
