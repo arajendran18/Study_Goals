@@ -1,0 +1,119 @@
+### **Test in a Staging Environment**
+
+Setting up and testing an upgrade in a **staging environment** is an essential part of the upgrade process for Vault. It allows you to validate that Vault 1.18 works as expected and that there are no disruptions to your production services. This stage helps identify potential issues that could affect the availability or functionality of your Vault deployment after upgrading in production.
+
+Here’s an explanation of what needs to be tested in the staging environment:
+
+---
+
+### **1. Set Up a Staging Environment Mirroring Production**
+
+**Purpose**:  
+To ensure that the upgrade process will go smoothly in production, the staging environment should be as close to production as possible. This includes configurations, storage backends, and all associated services.
+
+**Action Steps**:
+- **Infrastructure Replica**:  
+  - Use the same hardware or cloud setup (e.g., EC2 instances, VM configuration, etc.) as production.
+  - Ensure that the Vault version, policies, secret engines, and authentication methods are identical to production.
+
+- **Replication of Vault Data**:  
+  - Use the latest backup taken from the production environment or perform a manual sync to replicate the production data into the staging Vault.
+
+- **Traffic Simulation**:  
+  - Simulate traffic and load similar to production to evaluate how the upgrade impacts performance.
+
+**Scenario**:  
+You create a new Vault cluster in a separate AWS region or on separate EC2 instances that exactly mirrors the production cluster. All settings such as authentication methods (e.g., AWS IAM), secret engines, and replication configurations are replicated for testing purposes.
+
+---
+
+### **2. Upgrade Vault in This Environment**
+
+**Purpose**:  
+Perform the Vault upgrade in a controlled, non-production environment to ensure that everything functions correctly before updating the production environment.
+
+**Action Steps**:
+- **Upgrade Process**:  
+  - Follow the same upgrade steps you intend to use in production (e.g., backup, stop Vault, upgrade the Vault binary, start Vault).
+  - Monitor the upgrade process for any errors, warning messages, or issues.
+
+**Scenario**:  
+You upgrade Vault from 1.16 to 1.18 in the staging environment and track the upgrade steps carefully. You notice that there is a configuration mismatch in your storage backend or plugin loading issues.
+
+---
+
+### **3. Functional Compatibility Testing**
+
+**Purpose**:  
+Validate that Vault is still working as expected after the upgrade by checking core functionality.
+
+**Action Steps**:
+- **Basic Operations**:  
+  - Test all basic Vault operations such as secret creation, reading, updating, and deletion.
+  - Ensure that existing Vault policies are working and applied correctly.
+
+- **Version-Specific Features**:  
+  - Test new features introduced in version 1.18 (such as AWS Workload Identity Federation or granular audit logging) to verify that they function correctly.
+
+**Scenario**:  
+You create new secrets, policies, and test retrieval from Vault’s UI and API. After upgrading to Vault 1.18, all of these operations should work as expected without any disruptions.
+
+---
+
+### **4. Authentication Methods Testing**
+
+**Purpose**:  
+Ensure that Vault’s authentication methods continue to function properly after the upgrade.
+
+**Action Steps**:
+- **Test Existing Auth Methods**:  
+  - Test authentication methods that are actively used in production (e.g., AWS IAM, AppRole, LDAP, GitHub).
+  - Ensure that tokens are being generated correctly, and the authentication flow is uninterrupted.
+
+- **Test New Features**:  
+  - If the new version introduces additional auth methods (e.g., support for AWS Workload Identity Federation in 1.18), test the behavior and configuration of these methods.
+
+**Scenario**:  
+You test that AWS IAM authentication for EC2 instances or AppRole-based authentication is working post-upgrade. You also test if the new support for AWS Workload Identity Federation (WIF) is functioning correctly in the staging environment.
+
+---
+
+### **5. Secrets Engine Behavior Testing**
+
+**Purpose**:  
+Ensure that the existing and new secrets engines continue to function as expected after the upgrade.
+
+**Action Steps**:
+- **Test Existing Engines**:  
+  - Test the behavior of secrets engines that are already in use in production (e.g., AWS secrets engine, database secrets engine).
+  - Ensure that secrets are being created, renewed, and revoked as expected.
+
+- **Test New Engines**:  
+  - If Vault 1.18 introduces new secret engines (e.g., support for granular audit logging for secret engines), test their behavior.
+
+**Scenario**:  
+You verify that the AWS secrets engine is working by generating AWS credentials. You also check if the newly introduced granular audit logging for secret engines in Vault 1.18 is functioning as expected.
+
+---
+
+### **6. Custom Plugins Testing**
+
+**Purpose**:  
+Ensure that any custom plugins (e.g., for secret engines, authentication, or vault extensions) work with the new Vault version.
+
+**Action Steps**:
+- **Check Plugin Compatibility**:  
+  - Verify that your custom plugins are still compatible with Vault 1.18. This includes checking for any breaking changes in the Vault API or plugin SDK.
+  - Recompile or update the plugins if necessary.
+
+- **Test Plugin Functionality**:  
+  - After ensuring compatibility, test each custom plugin to verify that they continue to perform their intended tasks (e.g., managing secrets, creating roles).
+
+**Scenario**:  
+You have a custom plugin that integrates Vault with an internal database. After upgrading Vault to version 1.18, you run tests to verify that the plugin loads correctly and that the database credentials are properly managed by Vault.
+
+---
+
+### **Summary**
+
+By testing in a staging environment, you can identify any potential issues with Vault’s functionality, authentication methods, secrets engines, and custom plugins before upgrading in production. This helps ensure a smooth, reliable upgrade without causing disruption or downtime in your production environment.
