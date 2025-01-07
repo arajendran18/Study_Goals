@@ -1,0 +1,67 @@
+### **2. Compatibility Check**
+
+Ensuring compatibility before upgrading Vault to version 1.18 is critical to avoid disruptions in existing functionality. Here's how each area should be verified:
+
+---
+
+### **1. Clients and APIs**
+
+**What it means**:  
+Applications and tools interacting with Vault (via CLI, SDKs, or API) must be compatible with the updated API changes introduced in version 1.18.
+
+**Scenario**:  
+- Your application uses a Go-based Vault SDK to authenticate and retrieve secrets.  
+- After upgrading to Vault 1.18, the SDK fails to authenticate because the API response format for the AWS auth method changed slightly.  
+- To fix this, you update the Go SDK to a version compatible with Vault 1.18.
+
+**Action**:  
+- Review the Vault API changelog for breaking changes or updates.  
+- Test critical workflows (authentication, secret retrieval) in a staging environment with Vault 1.18.  
+
+**Risk**:  
+- If client compatibility is not checked, applications may experience errors or fail to connect to Vault after the upgrade.  
+
+---
+
+### **2. Plugins**
+
+**What it means**:  
+Authentication methods, secrets engines, and custom plugins must work seamlessly with Vault 1.18.
+
+**Scenario**:  
+- Your organization uses a custom plugin for managing database credentials.  
+- After upgrading, Vault refuses to load the plugin because it was compiled for Vault 1.16 and does not meet the plugin API version requirements of 1.18.  
+- You recompile the plugin using the Vault 1.18 plugin SDK to ensure compatibility.
+
+**Action**:  
+- Verify the compatibility of each plugin (custom or official) against Vault 1.18.  
+- Update or recompile plugins, if required, using the latest Vault plugin SDK.  
+
+**Risk**:  
+- Incompatible plugins may fail to load, breaking workflows dependent on them (e.g., secrets retrieval, database integrations).  
+
+---
+
+### **3. Replication**
+
+**What it means**:  
+Disaster Recovery (DR) and Performance replication setups should remain functional and supported in the new version.
+
+**Scenario**:  
+- Your primary cluster in **us-west-2** replicates to a DR cluster in **us-east-1**.  
+- Vault 1.18 introduces changes to replication protocols, and the DR cluster fails to sync after the upgrade.  
+- You adjust the DR replication configuration based on updated documentation and reinitialize replication successfully.
+
+**Action**:  
+- Review the release notes for any changes to replication protocols or configuration.  
+- Test replication in a staging environment before upgrading the production cluster.  
+- Validate that all clusters (primary, DR, and performance) sync correctly after the upgrade.  
+
+**Risk**:  
+- Improper replication configurations may lead to sync failures or inconsistencies between clusters, risking data loss or downtime during failover scenarios.  
+
+---
+
+### **Summary**
+
+Thorough compatibility testing ensures a seamless transition to Vault 1.18. By validating client interactions, plugin support, and replication functionality, you can avoid unexpected failures and ensure continuity in your Vault workflows.
