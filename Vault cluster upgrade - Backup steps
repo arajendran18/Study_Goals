@@ -1,0 +1,102 @@
+### **3. Backup**
+
+Taking a full backup of Vault data and configuration is a critical step before upgrading to ensure you can restore the environment in case of issues. Here's an explanation of how to perform backups, particularly for Raft storage.
+
+---
+
+### **Step-by-Step Guide to Backups**
+
+#### **1. Why Take a Backup?**
+**Purpose**:  
+- Safeguard Vault data, configurations, policies, secrets, and replication settings.  
+- Ensure you can restore Vault to its pre-upgrade state in case of failure or data corruption.  
+
+**Scenario**:  
+Your team upgrades Vault to version 1.18, but an unexpected issue causes a failure in secret engine configurations. Without a backup, the team struggles to recover lost configurations, delaying production workflows.
+
+---
+
+#### **2. Backup for Raft Storage**
+
+**Command**:  
+To take a snapshot of Raft storage, use the following command:
+
+```bash
+vault operator raft snapshot save <file-path>
+```
+
+**Explanation**:  
+- **`vault operator raft snapshot save`**: Captures a complete snapshot of the Raft storage, including secrets, policies, authentication methods, and configurations.  
+- **`<file-path>`**: Specify the location to save the snapshot (e.g., `/backups/vault-snapshot-<date>.snap`).  
+
+**Scenario**:  
+Your Vault cluster uses Raft storage as the backend. Before upgrading, you run the following command:
+
+```bash
+vault operator raft snapshot save /backups/vault-snapshot-2025-01-05.snap
+```
+
+This creates a file containing all Raft data, which can be restored in case of issues during or after the upgrade.
+
+**Best Practices**:  
+- Save the backup file in a secure and reliable location (e.g., an encrypted S3 bucket).  
+- Take the backup during a maintenance window to avoid inconsistent snapshots.  
+
+---
+
+#### **3. Backup for Other Storage Backends**
+If you are not using Raft as the storage backend, the backup process depends on the backend in use:
+
+- **Consul**:  
+  - Backup the Consul data directory using tools like `consul snapshot save`.  
+  - Command example:  
+    ```bash
+    consul snapshot save /backups/consul-snapshot-2025-01-05.snap
+    ```
+
+- **Database Backends (PostgreSQL, MySQL, etc.)**:  
+  - Use native database backup tools (`pg_dump`, `mysqldump`) to take a full backup of the Vault data.
+
+**Scenario**:  
+If Vault is using Consul as the backend, you take a Consul snapshot with:  
+```bash
+consul snapshot save /backups/consul-snapshot-2025-01-05.snap
+```
+
+---
+
+#### **4. Test the Backup**
+Before proceeding with the upgrade, test the backup to ensure it can be restored:
+
+- For Raft storage, restore the snapshot in a test environment:
+  ```bash
+  vault operator raft snapshot restore <file-path>
+  ```
+  Example:
+  ```bash
+  vault operator raft snapshot restore /backups/vault-snapshot-2025-01-05.snap
+  ```
+
+- For Consul or other backends, follow their respective restore processes.
+
+**Scenario**:  
+In a staging environment, you restore the Raft snapshot and validate that all policies, secrets, and authentication methods are intact.
+
+---
+
+#### **5. Include Configuration Files**
+Vault configurations (e.g., `config.hcl`) are not part of Raft storage. Ensure you back up these files separately:
+
+- **Linux Example**:
+  ```bash
+  cp /etc/vault/config.hcl /backups/config.hcl
+  ```
+
+- **Scenario**:  
+After upgrading, a configuration mismatch causes Vault to fail. You quickly restore the original `config.hcl` to resolve the issue.
+
+---
+
+### **Summary**
+
+Taking a backup involves capturing both the storage data and configuration files. Using `vault operator raft snapshot save` ensures a complete Raft storage backup, while additional steps cover other storage backends and configurations. Always test the backup to confirm its usability before proceeding with the upgrade.
