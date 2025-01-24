@@ -1,132 +1,103 @@
-Here are the possible output scenarios for `vault read sys/replication/status`, broken down for each situation.
-
-### **Scenario 1: Replication Is Healthy**
-This scenario indicates that the primary and secondary clusters are in sync, and the replication is functioning normally.
-
-#### **Expected Output:**
-```json
-{
-  "replication_dr": {
-    "mode": "secondary",
-    "state": "running",
-    "last_dr_wal": 150,
-    "last_wal": 152
-  },
-  "replication_performance": {
-    "mode": "primary",
-    "state": "running",
-    "last_performance_wal": 152,
-    "last_wal": 152
-  }
-}
-```
-**Explanation:**
-- `last_dr_wal` and `last_wal` are very close (only a small difference, like 150 vs 152).
-- `last_performance_wal` is identical or very close to `last_wal` (e.g., 152 vs 152).
-- Replication is in a healthy state (`state: "running"`).
-
-### **Scenario 2: Replication Lag**
-This scenario occurs when there is a delay in the replication process, possibly due to network issues, high load, or resource constraints.
-
-#### **Expected Output (DR replication lag):**
-```json
-{
-  "replication_dr": {
-    "mode": "secondary",
-    "state": "running",
-    "last_dr_wal": 100,
-    "last_wal": 150
-  },
-  "replication_performance": {
-    "mode": "primary",
-    "state": "running",
-    "last_performance_wal": 150,
-    "last_wal": 152
-  }
-}
-```
-**Explanation:**
-- `last_dr_wal` is significantly behind `last_wal` (100 vs 150), indicating that the DR replication is lagging.
-- `last_performance_wal` is close to `last_wal` (150 vs 152), so performance replication is working fine.
-
-#### **Expected Output (Performance replication lag):**
-```json
-{
-  "replication_dr": {
-    "mode": "secondary",
-    "state": "running",
-    "last_dr_wal": 152,
-    "last_wal": 152
-  },
-  "replication_performance": {
-    "mode": "secondary",
-    "state": "running",
-    "last_performance_wal": 120,
-    "last_wal": 150
-  }
-}
-```
-**Explanation:**
-- `last_performance_wal` is behind `last_wal` (120 vs 150), indicating performance replication lag.
-- `last_dr_wal` and `last_wal` are in sync, so DR replication is healthy.
-
-### **Scenario 3: Replication Stopped**
-This scenario occurs when replication is either disabled or has failed due to a configuration or operational issue.
-
-#### **Expected Output:**
-```json
-{
-  "replication_dr": {
-    "mode": "secondary",
-    "state": "stopped",
-    "last_dr_wal": 0,
-    "last_wal": 0
-  },
-  "replication_performance": {
-    "mode": "secondary",
-    "state": "stopped",
-    "last_performance_wal": 0,
-    "last_wal": 0
-  }
-}
-```
-**Explanation:**
-- Both `replication_dr` and `replication_performance` show `"state": "stopped"`, indicating that replication has been disabled or failed.
-- `last_dr_wal` and `last_wal` are `0` because no replication has occurred.
-
-### **Scenario 4: Primary-Secondary Mismatch**
-This scenario occurs when the secondary cluster is pointing to the wrong primary cluster, or there is a misconfiguration.
-
-#### **Expected Output:**
-```json
-{
-  "replication_dr": {
-    "mode": "secondary",
-    "state": "running",
-    "last_dr_wal": 150,
-    "last_wal": 152
-  },
-  "replication_performance": {
-    "mode": "primary",
-    "state": "running",
-    "last_performance_wal": 152,
-    "last_wal": 100
-  }
-}
-```
-**Explanation:**
-- The mismatch occurs because `last_performance_wal` is behind `last_wal` (152 vs 100).
-- This could indicate that the performance replication secondary cluster is incorrectly synced with the wrong primary.
+When you run the `vault read sys/replication/status` command, it provides details about the **replication setup** in your Vault environment, including performance and disaster recovery (DR) replication. Here's what to validate and interpret from the output:
 
 ---
 
-### **Scenario Summary:**
+### **Key Information to Look For**
 
-- **Healthy Replication**: Both `last_performance_wal` and `last_dr_wal` are very close to `last_wal`.
-- **Replication Lag**: Either `last_performance_wal` or `last_dr_wal` is significantly behind `last_wal`, indicating a lag.
-- **Replication Stopped**: Both replication modes show `"state": "stopped"`.
-- **Primary-Secondary Mismatch**: The `last_performance_wal` or `last_dr_wal` is significantly different from `last_wal`, indicating a misconfiguration.
+#### **1. Common Fields**
+These fields apply to both performance and DR replication setups:
+
+| Field                     | What It Means                                                                                       | What to Validate                                                                                                   |
+|---------------------------|----------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------|
+| `mode`                    | Whether the node is `primary` or `secondary`.                                                      | Ensure the node is in the correct mode for its role (primary or secondary).                                       |
+| `state`                   | The current state of the replication process (`running`, `stopped`, etc.).                         | Validate that the state is `running`. If it's `stopped`, investigate why replication isn't active.                |
+| `last_wal`                | The last **Write-Ahead Log (WAL)** index processed.                                                | Ensure this value is updated frequently and does not lag significantly.                                           |
+| `running`                 | Whether replication is actively running (`true` or `false`).                                       | Confirm this is `true`.                                                                                           |
+| `replication_dr`          | DR replication-specific details, if applicable.                                                   | If using DR replication, ensure the `primary` or `secondary` setup matches your expectations.                     |
+| `replication_performance` | Performance replication-specific details, if applicable.                                           | Ensure the `primary` or `secondary` setup matches your expectations.                                              |
 
 ---
 
-These outputs will help you diagnose the state of replication and guide you in resolving issues related to replication, lag, or configuration mismatches.
+#### **2. Performance Replication (if applicable)**
+If performance replication is enabled, check these additional fields under the `replication_performance` section:
+
+| Field                     | What It Means                                                                                       | What to Validate                                                                                                   |
+|---------------------------|----------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------|
+| `primary_cluster_addr`    | The address of the primary cluster.                                                                | Verify that this matches the correct primary cluster address.                                                     |
+| `secondary_id`            | A unique identifier for the secondary cluster.                                                     | Ensure this matches the configured secondary cluster.                                                             |
+| `last_remote_wal`         | The last WAL received by the secondary cluster.                                                    | Ensure this value is not far behind the `last_wal` from the primary.                                              |
+| `secondary_cluster_addr`  | Address of the secondary cluster (if you’re checking from the primary).                            | Verify that the secondary cluster is correctly configured and reachable.                                          |
+
+---
+
+#### **3. Disaster Recovery (DR) Replication (if applicable)**
+If DR replication is enabled, check these additional fields under the `replication_dr` section:
+
+| Field                     | What It Means                                                                                       | What to Validate                                                                                                   |
+|---------------------------|----------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------|
+| `primary_cluster_addr`    | The address of the primary cluster.                                                                | Verify that this matches the correct primary cluster address.                                                     |
+| `last_remote_wal`         | The last WAL received by the DR secondary cluster.                                                 | Ensure this value is not far behind the `last_wal` from the primary.                                              |
+| `last_wal`                | The last WAL committed on the primary cluster.                                                     | Ensure the secondary has caught up with the primary.                                                              |
+| `secondary_id`            | A unique identifier for the DR secondary cluster.                                                  | Ensure this matches the correct secondary cluster.                                                                |
+| `primary_last_contact`    | The time since the DR secondary last successfully communicated with the primary cluster.            | Ensure this is a very small value (indicating frequent communication).                                            |
+
+---
+
+### **How to Interpret Common Scenarios**
+
+#### **Scenario 1: Replication Is Healthy**
+- **State**: `running`
+- **Last WAL**: Minimal difference between `last_remote_wal` and `last_wal`.
+- **Primary Last Contact**: Close to zero or a small time delay.
+- Both performance and DR replication clusters are syncing correctly.
+
+#### **Scenario 2: Replication Lag**
+- **State**: `running`, but `last_remote_wal` significantly lags behind `last_wal`.
+- **Issue**: This indicates replication lag, likely due to network issues, high load, or resource constraints on the primary or secondary cluster.
+- **Action**: Investigate network latency, CPU/memory usage, or disk I/O issues.
+
+#### **Scenario 3: Replication Stopped**
+- **State**: `stopped` or replication is not active.
+- **Issue**: Replication has been disabled or there is a configuration issue.
+- **Action**:
+  1. Check Vault logs for errors.
+  2. Ensure the replication setup is configured correctly.
+  3. Restart the replication process if necessary.
+
+#### **Scenario 4: Primary-Secondary Mismatch**
+- **Issue**: The secondary cluster is pointing to the wrong primary or vice versa.
+- **Action**: Verify the `primary_cluster_addr` and `secondary_cluster_addr` values in the configuration.
+
+---
+
+### **Example Command and Output**
+```bash
+vault read sys/replication/status
+```
+
+**Example Output:**
+```json
+{
+  "replication_dr": {
+    "mode": "secondary",
+    "state": "running",
+    "primary_cluster_addr": "https://vault-primary.example.com:8200",
+    "last_remote_wal": 105,
+    "last_wal": 107
+  },
+  "replication_performance": {
+    "mode": "primary",
+    "state": "running",
+    "secondary_id": "vault-secondary-1",
+    "last_wal": 107
+  }
+}
+```
+
+**Key Points from Output**:
+- DR replication is in `secondary` mode and running. The `last_remote_wal` is only 2 behind the `last_wal`, indicating good health.
+- Performance replication is in `primary` mode and running.
+
+---
+
+Let me know if you need help troubleshooting specific output!
