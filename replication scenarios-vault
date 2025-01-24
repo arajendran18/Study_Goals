@@ -1,31 +1,132 @@
-Scenario 1: Replication Is Healthy
-State: running
-Disaster Recovery: Minimal difference between last_dr_wal and last_wal.
-Performance Replication: Minimal difference between last_performance_wal and last_wal.
-Primary Last Contact: Close to zero or a small time delay.
-Action: No action required—both performance and DR replication clusters are in sync.
-Scenario 2: Replication Lag
-State: running
-Disaster Recovery: last_dr_wal lags significantly behind last_wal.
-Performance Replication: last_performance_wal lags significantly behind last_wal.
-Issue: Indicates replication lag, likely due to:
-Network latency
-High load on the primary or secondary clusters
-Resource constraints (CPU/memory/disk I/O)
-Action:
-Investigate resource usage on both primary and secondary clusters.
-Monitor network latency between clusters.
-Check for any backlog in WAL processing.
-Scenario 3: Replication Stopped
-State: stopped or replication is not active.
-Issue: Replication is either disabled or there is a configuration issue.
-Action:
-Check Vault logs for errors (e.g., network connectivity issues, cluster misconfiguration).
-Ensure the replication setup is correctly configured on both primary and secondary clusters.
-Restart the replication process.
-Scenario 4: Primary-Secondary Mismatch
-Issue: The secondary cluster is pointing to the wrong primary, or the primary is not properly configured to sync with the secondary.
-Action:
-Verify the primary_cluster_addr and secondary_cluster_addr in the configuration.
-Ensure that the secondary cluster can reach the primary cluster.
-Reconfigure the replication setup if needed.
+Here are the possible output scenarios for `vault read sys/replication/status`, broken down for each situation.
+
+### **Scenario 1: Replication Is Healthy**
+This scenario indicates that the primary and secondary clusters are in sync, and the replication is functioning normally.
+
+#### **Expected Output:**
+```json
+{
+  "replication_dr": {
+    "mode": "secondary",
+    "state": "running",
+    "last_dr_wal": 150,
+    "last_wal": 152
+  },
+  "replication_performance": {
+    "mode": "primary",
+    "state": "running",
+    "last_performance_wal": 152,
+    "last_wal": 152
+  }
+}
+```
+**Explanation:**
+- `last_dr_wal` and `last_wal` are very close (only a small difference, like 150 vs 152).
+- `last_performance_wal` is identical or very close to `last_wal` (e.g., 152 vs 152).
+- Replication is in a healthy state (`state: "running"`).
+
+### **Scenario 2: Replication Lag**
+This scenario occurs when there is a delay in the replication process, possibly due to network issues, high load, or resource constraints.
+
+#### **Expected Output (DR replication lag):**
+```json
+{
+  "replication_dr": {
+    "mode": "secondary",
+    "state": "running",
+    "last_dr_wal": 100,
+    "last_wal": 150
+  },
+  "replication_performance": {
+    "mode": "primary",
+    "state": "running",
+    "last_performance_wal": 150,
+    "last_wal": 152
+  }
+}
+```
+**Explanation:**
+- `last_dr_wal` is significantly behind `last_wal` (100 vs 150), indicating that the DR replication is lagging.
+- `last_performance_wal` is close to `last_wal` (150 vs 152), so performance replication is working fine.
+
+#### **Expected Output (Performance replication lag):**
+```json
+{
+  "replication_dr": {
+    "mode": "secondary",
+    "state": "running",
+    "last_dr_wal": 152,
+    "last_wal": 152
+  },
+  "replication_performance": {
+    "mode": "secondary",
+    "state": "running",
+    "last_performance_wal": 120,
+    "last_wal": 150
+  }
+}
+```
+**Explanation:**
+- `last_performance_wal` is behind `last_wal` (120 vs 150), indicating performance replication lag.
+- `last_dr_wal` and `last_wal` are in sync, so DR replication is healthy.
+
+### **Scenario 3: Replication Stopped**
+This scenario occurs when replication is either disabled or has failed due to a configuration or operational issue.
+
+#### **Expected Output:**
+```json
+{
+  "replication_dr": {
+    "mode": "secondary",
+    "state": "stopped",
+    "last_dr_wal": 0,
+    "last_wal": 0
+  },
+  "replication_performance": {
+    "mode": "secondary",
+    "state": "stopped",
+    "last_performance_wal": 0,
+    "last_wal": 0
+  }
+}
+```
+**Explanation:**
+- Both `replication_dr` and `replication_performance` show `"state": "stopped"`, indicating that replication has been disabled or failed.
+- `last_dr_wal` and `last_wal` are `0` because no replication has occurred.
+
+### **Scenario 4: Primary-Secondary Mismatch**
+This scenario occurs when the secondary cluster is pointing to the wrong primary cluster, or there is a misconfiguration.
+
+#### **Expected Output:**
+```json
+{
+  "replication_dr": {
+    "mode": "secondary",
+    "state": "running",
+    "last_dr_wal": 150,
+    "last_wal": 152
+  },
+  "replication_performance": {
+    "mode": "primary",
+    "state": "running",
+    "last_performance_wal": 152,
+    "last_wal": 100
+  }
+}
+```
+**Explanation:**
+- The mismatch occurs because `last_performance_wal` is behind `last_wal` (152 vs 100).
+- This could indicate that the performance replication secondary cluster is incorrectly synced with the wrong primary.
+
+---
+
+### **Scenario Summary:**
+
+- **Healthy Replication**: Both `last_performance_wal` and `last_dr_wal` are very close to `last_wal`.
+- **Replication Lag**: Either `last_performance_wal` or `last_dr_wal` is significantly behind `last_wal`, indicating a lag.
+- **Replication Stopped**: Both replication modes show `"state": "stopped"`.
+- **Primary-Secondary Mismatch**: The `last_performance_wal` or `last_dr_wal` is significantly different from `last_wal`, indicating a misconfiguration.
+
+---
+
+These outputs will help you diagnose the state of replication and guide you in resolving issues related to replication, lag, or configuration mismatches.
