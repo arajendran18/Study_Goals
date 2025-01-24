@@ -1,0 +1,31 @@
+Scenario 1: Replication Is Healthy
+State: running
+Disaster Recovery: Minimal difference between last_dr_wal and last_wal.
+Performance Replication: Minimal difference between last_performance_wal and last_wal.
+Primary Last Contact: Close to zero or a small time delay.
+Action: No action required—both performance and DR replication clusters are in sync.
+Scenario 2: Replication Lag
+State: running
+Disaster Recovery: last_dr_wal lags significantly behind last_wal.
+Performance Replication: last_performance_wal lags significantly behind last_wal.
+Issue: Indicates replication lag, likely due to:
+Network latency
+High load on the primary or secondary clusters
+Resource constraints (CPU/memory/disk I/O)
+Action:
+Investigate resource usage on both primary and secondary clusters.
+Monitor network latency between clusters.
+Check for any backlog in WAL processing.
+Scenario 3: Replication Stopped
+State: stopped or replication is not active.
+Issue: Replication is either disabled or there is a configuration issue.
+Action:
+Check Vault logs for errors (e.g., network connectivity issues, cluster misconfiguration).
+Ensure the replication setup is correctly configured on both primary and secondary clusters.
+Restart the replication process.
+Scenario 4: Primary-Secondary Mismatch
+Issue: The secondary cluster is pointing to the wrong primary, or the primary is not properly configured to sync with the secondary.
+Action:
+Verify the primary_cluster_addr and secondary_cluster_addr in the configuration.
+Ensure that the secondary cluster can reach the primary cluster.
+Reconfigure the replication setup if needed.
