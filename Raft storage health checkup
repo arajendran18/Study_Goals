@@ -1,0 +1,245 @@
+The `vault operator raft list-peers` command provides the list of nodes in the Raft consensus group and their current state. The Raft consensus group is used to maintain Vault's highly available configuration, especially in clusters that utilize Raft as a storage backend for Vault.
+
+### **Typical Scenarios and Expected Outputs for `vault operator raft list-peers`:**
+
+### **Scenario 1: Healthy Raft Cluster**
+In a healthy cluster, all nodes in the Raft group are in sync, and the cluster is able to handle read/write requests efficiently.
+
+#### **Expected Output:**
+```bash
+$ vault operator raft list-peers
+ID         Address             State    Voter
+---        -------             -----    ------
+node1      10.240.1.1:8200     leader   true
+node2      10.240.1.2:8200     follower true
+node3      10.240.1.3:8200     follower true
+```
+**Explanation:**
+- **State**: The node's current role in the Raft group. The state can be one of `leader`, `follower`, or `candidate`.
+- **Voter**: Indicates whether the node is a voter in the Raft consensus group. It should be `true` for all active nodes in a quorum.
+- In this case, there is one `leader` and two `followers`, and all nodes are `voters`.
+
+### **Scenario 2: Node Not Participating in Raft Group**
+A node may not participate in the Raft group due to issues like network problems, misconfiguration, or a manual removal from the cluster.
+
+#### **Expected Output:**
+```bash
+$ vault operator raft list-peers
+ID         Address             State    Voter
+---        -------             -----    ------
+node1      10.240.1.1:8200     leader   true
+node2      10.240.1.2:8200     follower true
+node3      10.240.1.3:8200     removed  false
+```
+**Explanation:**
+- `node3` has been removed from the Raft group and is no longer participating in the consensus.
+- The state for this node is marked as `removed`, and the `voter` field is `false`.
+- This scenario indicates a problem with `node3`, and it needs to be re-added to the Raft group or fixed if it is to rejoin the cluster.
+
+### **Scenario 3: Network Partition or Partitioned Node**
+In this case, one of the nodes in the cluster is unreachable or disconnected due to network issues. The disconnected node may show as a follower but will not be able to participate in the consensus.
+
+#### **Expected Output:**
+```bash
+$ vault operator raft list-peers
+ID         Address             State    Voter
+---        -------             -----    ------
+node1      10.240.1.1:8200     leader   true
+node2      10.240.1.2:8200     follower true
+node3      10.240.1.3:8200     follower false
+```
+**Explanation:**
+- `node3` is marked as `follower`, but it is not a valid `voter` due to being unreachable.
+- The network partitioning or connection issue may cause this node to lose its ability to participate in the Raft consensus.
+
+### **Scenario 4: Leader Election in Progress**
+This scenario happens when there is no leader (in case of a failure or when Vault is bootstrapping), and a new leader election is being initiated.
+
+#### **Expected Output:**
+```bash
+$ vault operator raft list-peers
+ID         Address             State    Voter
+---        -------             -----    ------
+node1      10.240.1.1:8200     candidate true
+node2      10.240.1.2:8200     follower true
+node3      10.240.1.3:8200     follower true
+```
+**Explanation:**
+- There is no leader in the Raft group yet, and one of the nodes (`node1`) is in the `candidate` state.
+- The `candidate` node will try to win the election and become the new leader.
+- The cluster is in the process of recovering from a leader failure.
+
+### **Scenario 5: Split Brain or Misconfiguration**
+This scenario happens when there are multiple leaders or the cluster is misconfigured.
+
+#### **Expected Output:**
+```bash
+$ vault operator raft list-peers
+ID         Address             State    Voter
+---        -------             -----    ------
+node1      10.240.1.1:8200     leader   true
+node2      10.240.1.2:8200     leader   true
+node3      10.240.1.3:8200     follower true
+```
+**Explanation:**
+- Two nodes (`node1` and `node2`) are marked as `leader`, which indicates a split-brain situation in the Raft consensus group.
+- This is an abnormal scenario and needs to be fixed immediately.
+- It can happen if there is a network partition that causes both nodes to think they are the leader.
+
+### **Scenario 6: Node Failing to Join the Raft Group**
+This occurs when a node is not properly configured or cannot join the Raft group, possibly due to network issues or configuration errors.
+
+#### **Expected Output:**
+```bash
+$ vault operator raft list-peers
+ID         Address             State    Voter
+---        -------             -----    ------
+node1      10.240.1.1:8200     leader   true
+node2      10.240.1.2:8200     follower true
+node3      10.240.1.3:8200     joining  false
+```
+**Explanation:**
+- `node3` is stuck in the `joining` state, meaning it is attempting to join the Raft group but has not yet succeeded.
+- This could be due to issues like network misconfigurations, missing configurations, or node health problems.
+
+### **Scenario Summary:**
+- **Healthy Cluster**: One leader, multiple followers, all nodes are voters.
+- **Node Not Participating**: A node is removed or not participating, marked as `removed` or `follower` with `false` in the voter field.
+- **Network Partition**: One node is unreachable, marked as `follower` but not a voter.
+- **Leader Election**: A `candidate` node is trying to become the leader.
+- **Split Brain**: Multiple leaders, a sign of misconfiguration or network issues.
+- **Node Failing to Join**: A node is stuck in the `joining` state, unable to fully join the Raft group.
+
+These scenarios will help you identify the health and state of the Raft consensus group and guide you in resolving any issues with the Vault cluster.
+
+Yes, there are additional possible scenarios that could arise when running `vault operator raft list-peers`. Here are a few more potential scenarios that you might encounter:
+
+### **Scenario 7: Raft Cluster with Inconsistent Logs (Log Mismatch)**
+This scenario occurs when there is a mismatch in logs between nodes in the Raft cluster, usually after a network partition or issues with disk I/O or configuration.
+
+#### **Expected Output:**
+```bash
+$ vault operator raft list-peers
+ID         Address             State    Voter
+---        -------             -----    ------
+node1      10.240.1.1:8200     leader   true
+node2      10.240.1.2:8200     follower true
+node3      10.240.1.3:8200     follower false
+```
+**Explanation:**
+- In this case, `node3` has a log mismatch, and it can no longer be a voter, potentially because it has missed replication due to network issues or disk problems.
+- A node with inconsistent logs can be forced to resync its logs to catch up, which might require manual intervention (e.g., unsealing the node, forcing a resync, or even removing it from the cluster and rejoining).
+
+### **Scenario 8: Node with Disk Full / I/O Issues**
+If a node has disk space issues or high I/O latency, it might fail to sync properly with the Raft cluster, causing it to fall behind or be unable to participate in consensus.
+
+#### **Expected Output:**
+```bash
+$ vault operator raft list-peers
+ID         Address             State    Voter
+---        -------             -----    ------
+node1      10.240.1.1:8200     leader   true
+node2      10.240.1.2:8200     follower true
+node3      10.240.1.3:8200     follower false
+```
+**Explanation:**
+- `node3` is stuck in a non-voting state (`follower` marked `false`), possibly due to disk space or I/O problems.
+- The node might not be able to keep up with the log replication and has fallen behind significantly.
+- Resolve by checking disk space, I/O latency, and ensuring the node can handle the load.
+
+### **Scenario 9: Vault in Recovery Mode**
+If Vault was restarted or has experienced an issue (e.g., crash), it might be in a recovery mode, where a node attempts to catch up to the leader's logs and join the Raft group.
+
+#### **Expected Output:**
+```bash
+$ vault operator raft list-peers
+ID         Address             State    Voter
+---        -------             -----    ------
+node1      10.240.1.1:8200     leader   true
+node2      10.240.1.2:8200     follower true
+node3      10.240.1.3:8200     recovery true
+```
+**Explanation:**
+- `node3` is in the `recovery` state, meaning it is trying to catch up to the leader and apply any logs it missed.
+- This could happen after a restart or if the node was temporarily isolated from the Raft group.
+- The node is not fully functional until it successfully catches up with the leader.
+
+### **Scenario 10: Single Node Cluster (After Node Failure)**
+In cases where a Vault cluster loses all but one node (for example, a hardware failure, network partition, or misconfiguration), the remaining node can still function as a standalone Vault instance.
+
+#### **Expected Output:**
+```bash
+$ vault operator raft list-peers
+ID         Address             State    Voter
+---        -------             -----    ------
+node1      10.240.1.1:8200     leader   true
+```
+**Explanation:**
+- There is only one node in the Raft cluster (node1), which is acting as the `leader`.
+- This indicates that other nodes may have failed or been removed, and the remaining node is now functioning in isolation.
+- Vault in this state has no high availability or replication; it's functioning as a single node.
+
+### **Scenario 11: Raft Log Corruption**
+Raft log corruption can occur if there are disk or hardware issues that cause the Raft logs to become unreadable or inconsistent.
+
+#### **Expected Output:**
+```bash
+$ vault operator raft list-peers
+ID         Address             State    Voter
+---        -------             -----    ------
+node1      10.240.1.1:8200     leader   true
+node2      10.240.1.2:8200     follower true
+node3      10.240.1.3:8200     error    false
+```
+**Explanation:**
+- `node3` is in the `error` state, meaning it has encountered an issue with its Raft logs (e.g., log corruption).
+- This could be due to disk failures or other hardware-related issues. The node would need to be repaired or reinitialized.
+- Logs should be checked for errors, and Vault might need to be restarted or the node replaced.
+
+### **Scenario 12: Raft Cluster with an Incomplete Configuration**
+If the Raft cluster has not been properly configured, it may show incomplete states for some nodes.
+
+#### **Expected Output:**
+```bash
+$ vault operator raft list-peers
+ID         Address             State    Voter
+---        -------             -----    ------
+node1      10.240.1.1:8200     leader   true
+node2      10.240.1.2:8200     unknown  false
+node3      10.240.1.3:8200     follower true
+```
+**Explanation:**
+- `node2` is in the `unknown` state, meaning its configuration might be incorrect or incomplete (e.g., missing Vault configurations or a network partition preventing it from joining the cluster).
+- This requires troubleshooting configuration issues and possibly rejoining the node to the Raft group.
+
+### **Scenario 13: Vault in Standalone Mode (Not a Cluster)**
+If Vault is configured to run in a single-node mode and is not set up for Raft, this can cause the cluster command to show that no Raft peers are present.
+
+#### **Expected Output:**
+```bash
+$ vault operator raft list-peers
+Error: Error communicating with Vault. You may need to authenticate.
+```
+**Explanation:**
+- Vault is not running in Raft mode, or the cluster is not initialized. There might be an issue with the Vault cluster setup, or the Vault instance is running in standalone mode.
+- If Vault is not initialized for Raft, you would need to set up Raft and reconfigure the cluster.
+
+---
+
+### **Summary of All Possible Scenarios:**
+
+1. **Healthy Raft Cluster** – Normal operation with one leader and multiple followers.
+2. **Node Not Participating** – A node is removed or not participating in the Raft group.
+3. **Network Partition** – One node is unreachable but still in `follower` state.
+4. **Leader Election** – One node is in the `candidate` state, attempting to become the leader.
+5. **Split Brain** – Multiple leaders, usually indicating a configuration or network issue.
+6. **Node Failing to Join** – A node is stuck in the `joining` state, unable to fully join the Raft group.
+7. **Raft Cluster with Inconsistent Logs** – A node has missed logs or is out of sync with others.
+8. **Node with Disk Full / I/O Issues** – A node has disk issues and can't participate in consensus.
+9. **Vault in Recovery Mode** – A node is catching up on logs after a failure or restart.
+10. **Single Node Cluster** – Only one node is operational in the Raft cluster.
+11. **Raft Log Corruption** – A node has encountered Raft log corruption, preventing it from participating.
+12. **Raft Cluster with Incomplete Configuration** – Misconfiguration or missing configuration causing errors.
+13. **Vault in Standalone Mode** – Vault is not configured to use Raft and is functioning as a standalone instance.
+
+These scenarios can help diagnose issues and guide troubleshooting steps for maintaining a healthy Vault Raft cluster.
