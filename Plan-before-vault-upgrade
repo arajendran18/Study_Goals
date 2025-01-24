@@ -1,0 +1,144 @@
+Upgrading Vault requires careful planning and validation to ensure stability and avoid data loss or service disruption. Below is a detailed checklist and steps to perform before initiating the upgrade.
+
+---
+
+### **1. Pre-Upgrade Preparation**
+#### **A. Validate Cluster Stability**
+1. **Check Vault Health**:
+   - Run the `sys/health` API to check the health of all nodes in the cluster.
+   ```bash
+   curl -s http://<vault-address>:8200/v1/sys/health
+   ```
+   - Ensure all nodes report as `sealed=false`, `initialized=true`, and `standby` or `active`.
+
+2. **Monitor Logs**:
+   - Review Vault server logs across all nodes for errors or warnings.
+   - Look for signs of cluster instability, such as failed Raft communication, replication issues, or unseal failures.
+
+3. **Replication Health (if applicable)**:
+   - Use the `sys/replication/performance` and `sys/replication/dr` API to ensure replication is healthy:
+     ```bash
+     vault read sys/replication/status
+     ```
+   - Confirm replication lag is minimal.
+
+4. **Raft Storage Health**:
+   - Check Raft storage status to ensure all peers are active:
+     ```bash
+     vault operator raft list-peers
+     ```
+   - Ensure there is a quorum (majority of nodes must be healthy).
+
+---
+
+#### **B. Backup Critical Data**
+1. **Vault Data Backup**:
+   - Take a backup of the storage backend (e.g., Raft snapshots, Consul data).
+   - For Raft, run:
+     ```bash
+     vault operator raft snapshot save <snapshot-file>
+     ```
+   - Store the backup in a secure location.
+
+2. **Configuration Backup**:
+   - Backup all Vault configuration files (e.g., `vault.hcl`) from each node.
+   - Include certificates and TLS-related files if applicable.
+
+3. **Audit Logs**:
+   - Ensure all audit logs are archived for reference post-upgrade.
+
+---
+
+#### **C. Review Existing Configurations**
+1. **Check Auto-Unseal Configuration**:
+   - Verify that your auto-unseal mechanism (e.g., AWS KMS or HSM) is properly configured and working.
+   - Test the unseal process on a standby node.
+
+2. **Review Policies and Auth Methods**:
+   - List all active policies and auth methods to confirm their validity:
+     ```bash
+     vault list sys/policies/acl
+     vault list sys/auth
+     ```
+
+3. **Inspect Secrets Engines**:
+   - Ensure all secrets engines (e.g., KV, AWS, Azure) are configured correctly and operational:
+     ```bash
+     vault secrets list
+     ```
+
+4. **Ensure Cluster Leader is Stable**:
+   - Verify which node is the active leader:
+     ```bash
+     vault status
+     ```
+
+---
+
+#### **D. Compatibility Checks**
+1. **Review Release Notes**:
+   - Read the release notes for versions between 1.16.3 and 1.18.3:
+     - Identify deprecated features, breaking changes, and required configuration updates.
+
+2. **Upgrade Path**:
+   - Ensure that direct upgrade from 1.16.3 to 1.18.3 is supported. If not, perform intermediate upgrades.
+
+3. **Plugins and Custom Code**:
+   - Validate that any plugins or custom integrations are compatible with 1.18.3.
+
+4. **Vault Agent and Clients**:
+   - Ensure any Vault clients, such as Vault Agent, are compatible with the new version.
+
+---
+
+#### **E. Test in a Staging Environment**
+1. **Set Up Sandbox Testing**:
+   - Create a sandbox environment that mirrors production as closely as possible.
+   - Test the upgrade process in the sandbox.
+
+2. **Perform Upgrade Simulation**:
+   - Upgrade a single node in the sandbox environment and validate functionality.
+   - Test key use cases, such as reading/writing secrets, authentication, and unseal operations.
+
+3. **Verify Rollback Plan**:
+   - Test the rollback plan to confirm you can restore the previous version if needed.
+
+---
+
+### **2. Checklist Before Upgrade**
+Here’s a summary checklist to validate before initiating the upgrade:
+
+| **Item**                                 | **Validated? (✔/✘)** |
+|------------------------------------------|-----------------------|
+| All nodes are healthy (via `sys/health`).|                       |
+| Replication is healthy (low/no lag).     |                       |
+| Raft quorum is stable.                   |                       |
+| Data and configuration backups completed.|                       |
+| Review release notes for breaking changes.|                      |
+| Secrets engines are operational.         |                       |
+| Policies and auth methods validated.     |                       |
+| Unseal mechanism is tested.              |                       |
+| Upgrade tested in a sandbox.             |                       |
+| Rollback plan is in place.               |                       |
+
+---
+
+### **3. Communication and Coordination**
+1. **Communicate Downtime**:
+   - Notify stakeholders of potential downtime during the upgrade.
+   - Schedule the upgrade during a maintenance window.
+
+2. **Team Coordination**:
+   - Ensure all team members are aware of the upgrade plan.
+   - Assign roles for monitoring, execution, and rollback.
+
+---
+
+### **4. Prepare for Execution**
+- Validate that your root token is available and securely stored in case of emergency.
+- Ensure you have access to the servers hosting the Vault nodes.
+- Disable any automated systems that may interfere with the upgrade process.
+
+---
+
+Let me know if you need detailed steps for the upgrade itself!
