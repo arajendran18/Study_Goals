@@ -1,0 +1,59 @@
+# Allow access to read and list secrets in a specific path
+path "kv/*" {
+  capabilities = ["read", "list"]
+}
+
+# Allow access to manage replication (performance and DR)
+path "sys/replication/*" {
+  capabilities = ["read", "list", "update"]
+}
+
+# Allow access to manage raft storage (add/remove peers, inspect snapshots)
+path "sys/storage/raft/*" {
+  capabilities = ["read", "list", "update"]
+}
+
+# Allow access to system paths for viewing and managing storage
+path "sys/storage/*" {
+  capabilities = ["read", "list", "update"]
+}
+
+# Allow full access to manage auth methods
+path "auth/*" {
+  capabilities = ["create", "update", "read", "delete", "list"]
+}
+
+# Allow full access to policies
+path "sys/policies/*" {
+  capabilities = ["create", "update", "read", "delete", "list"]
+}
+
+# Allow access to health, audit logs, and leases
+path "sys/health" {
+  capabilities = ["read"]
+}
+
+path "sys/audit/*" {
+  capabilities = ["read", "list"]
+}
+
+path "sys/leases/*" {
+  capabilities = ["read", "list", "update", "delete"]
+}
+
+# Allow cluster operations: unseal, seal, rekey, reinitialize
+path "sys/seal" {
+  capabilities = ["update"]
+}
+
+path "sys/unseal" {
+  capabilities = ["update"]
+}
+
+path "sys/rekey/*" {
+  capabilities = ["read", "update"]
+}
+
+path "sys/operator/*" {
+  capabilities = ["read", "update"]
+}
