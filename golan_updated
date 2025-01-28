@@ -1,0 +1,64 @@
+package main
+
+import (
+	"fmt"
+	"log"
+
+	vault "github.com/hashicorp/vault/api"
+)
+
+func main() {
+	// Vault details
+	vaultAddress := "https://npd-esms.lllint.com"
+	roleName := "app-productdesign-role" // Replace with the input role name
+
+	// Initialize Vault client
+	client, err := vault.NewClient(&vault.Config{Address: vaultAddress})
+	if err != nil {
+		log.Fatalf("Error initializing Vault client: %v", err)
+	}
+
+	// Fetch role_id
+	roleIDPath := fmt.Sprintf("auth/approle/role/%s/role-id", roleName)
+	roleIDResp, err := client.Logical().Read(roleIDPath)
+	if err != nil || roleIDResp == nil {
+		log.Fatalf("Failed to fetch role_id for role '%s': %v", roleName, err)
+	}
+	roleID := roleIDResp.Data["role_id"].(string)
+
+	// Fetch secret_id
+	secretIDPath := fmt.Sprintf("auth/approle/role/%s/secret-id", roleName)
+	secretIDResp, err := client.Logical().Write(secretIDPath, nil)
+	if err != nil || secretIDResp == nil {
+		log.Fatalf("Failed to fetch secret_id for role '%s': %v", roleName, err)
+	}
+	secretID := secretIDResp.Data["secret_id"].(string)
+
+	// Authenticate with AppRole
+	authData := map[string]interface{}{
+		"role_id":   roleID,
+		"secret_id": secretID,
+	}
+	authResp, err := client.Logical().Write("auth/approle/login", authData)
+	if err != nil || authResp == nil {
+		log.Fatalf("Failed to authenticate: %v", err)
+	}
+
+	client.SetToken(authResp.Auth.ClientToken)
+	fmt.Println("Authenticated successfully!")
+
+	// Fetch secret
+	secretPath := "/app-productdesign-kv/data/dev/daps/db-master" // Update secret path as needed
+	secret, err := client.Logical().Read(secretPath)
+	if err != nil {
+		log.Fatalf("Failed to read secret: %v", err)
+	}
+	if secret == nil {
+		log.Fatalf("No secret found at path: %s", secretPath)
+	}
+
+	fmt.Println("Secrets:")
+	for key, value := range secret.Data {
+		fmt.Printf("%s: %v\n", key, value)
+	}
+}
