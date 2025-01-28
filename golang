@@ -1,0 +1,45 @@
+package main
+
+import (
+	"fmt"
+	"log"
+
+	vault "github.com/hashicorp/vault/api"
+)
+
+func main() {
+	vaultAddress := "https://npd-esms.lllint.com"
+	roleID := "c54518f4-943d-a0eb-9e45-0aebb246993a"
+	secretID := "81a2c6a1-c416-cb55-4ead-c11728eed6de"
+	client, err := vault.NewClient(&vault.Config{Address: vaultAddress})
+	if err != nil {
+		log.Fatalf("Error initializing vault client: %v", err)
+	}
+	authData := map[string]interface{}{
+		"role_id":   roleID,
+		"secret_id": secretID,
+	}
+
+	authResp, err := client.Logical().Write("auth/approle/login", authData)
+	if err != nil {
+		log.Fatalf("Failed to authenticate %v", err)
+	}
+	client.SetToken(authResp.Auth.ClientToken)
+	fmt.Println("Authenticated successfully!")
+	secretPath := "/app-productdesign-kv/data/dev/daps/db-master"
+	secret, err := client.Logical().Read(secretPath)
+	if err != nil {
+		log.Fatalf("Failed to read secret: %v", err)
+	}
+	if secret == nil {
+		log.Fatalf("No secret found at path: %s", secretPath)
+	}
+	fmt.Println("Secrets: ")
+	for key, value := range secret.Data {
+		fmt.Printf("%s:%v\n", key, value)
+	}
+}
+
+
+
+
