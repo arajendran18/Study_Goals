@@ -13,3 +13,148 @@ Error: error writing AWS auth backend role "auth/aws/role/app-pdam-prd-aws-auth-
 with vault_aws_auth_backend_role.app-pdam-prd-aws-auth-role
 on team_pim-llaz-vault-pdam-prd-admin.tf line 16, in resource "vault_aws_auth_backend_role" "app-pdam-prd-aws-auth-role":
 resource "vault_aws_auth_backend_role" "app-pdam-prd-aws-auth-role" {
+
+### **SOP Document for Resolving Vault Auth Backend Role Errors**
+
+This document outlines the errors encountered while writing Kubernetes, JWT, and AWS auth backend roles in Vault and provides the resolution steps for each issue.
+
+---
+
+### **Error 1: Kubernetes Auth Backend Role Error**
+#### **Error Message**:
+```plaintext
+Error writing Kubernetes auth backend role "auth/aut-ek8s-prd-aws-ek8s-prd-east/role/ek8s-pdam-prd-ro": Error making API request. URL: PUT https://prd-esms.lllint.com/v1/auth/aut-ek8s-prd-aws-ek8s-prd-east/role/ek8s-pdam-prd-ro Code: 400. Errors: * "bound_service_account_names" can not be empty
+```
+
+#### **Explanation**:
+This error indicates that when creating the Kubernetes role in Vault, the `bound_service_account_names` field is missing or empty. The `bound_service_account_names` field is required to restrict the Kubernetes service accounts that can authenticate using the role.
+
+#### **Resolution Steps**:
+1. **Identify the Role Definition**:
+   - Open the Terraform file at `.terraform/modules/aut-k8s-pdam-prd/main.tf` (line 60).
+   
+2. **Check the `bound_service_account_names`**:
+   - Ensure the `bound_service_account_names` is properly defined in the role resource.
+   
+3. **Add the Required Bound Service Account**:
+   - Update the role definition by specifying the service account names:
+     ```hcl
+     resource "vault_kubernetes_auth_backend_role" "this" {
+       role_name              = "ek8s-pdam-prd-ro"
+       bound_service_account_names = ["<service-account-name>"]
+       bound_service_account_namespaces = ["<namespace>"]
+       policies               = ["<policy>"]
+       ...
+     }
+     ```
+
+4. **Validate the Changes**:
+   - Run the following commands:
+     ```bash
+     terraform validate
+     terraform plan
+     terraform apply
+     ```
+
+5. **Re-trigger the Pipeline**:
+   - After validation, re-run the GitLab pipeline to verify the fix.
+
+---
+
+### **Error 2: JWT Auth Backend Role Error**
+#### **Error Message**:
+```plaintext
+Error writing JWT auth backend role "auth/jwt/role/app-pdam-prd-gitlab-auth-role": Error making API request. URL: PUT https://prd-esms.lllint.com/v1/auth/jwt/role/app-pdam-prd-gitlab-auth-role Code: 400. Errors: * must have at least one bound constraint when creating/updating a role
+```
+
+#### **Explanation**:
+This error indicates that when creating a JWT role in Vault, the required **bound constraint** is missing. A **bound constraint** typically specifies parameters such as allowed claims or audiences that must be present in the JWT token for authentication.
+
+#### **Resolution Steps**:
+1. **Identify the Role Definition**:
+   - Open the Terraform file at `team_pim-llaz-vault-pdam-prd-admin.tf` (line 67).
+   
+2. **Add a Bound Constraint**:
+   - The role configuration should have a `bound_claims` or `bound_audiences` defined. For example:
+     ```hcl
+     resource "vault_jwt_auth_backend_role" "app-pdam-prd-gitlab-auth-role" {
+       role = "app-pdam-prd-gitlab-auth-role"
+       bound_audiences = ["<audience-value>"]
+       bound_claims = {
+         "claim_name" = "<claim_value>"
+       }
+       policies = ["<policy-name>"]
+       ...
+     }
+     ```
+
+3. **Validate the Changes**:
+   - Run the following commands:
+     ```bash
+     terraform validate
+     terraform plan
+     terraform apply
+     ```
+
+4. **Re-trigger the Pipeline**:
+   - Once validation passes, re-run the GitLab pipeline to check for successful role creation.
+
+---
+
+### **Error 3: AWS Auth Backend Role Error**
+#### **Error Message**:
+```plaintext
+Error writing AWS auth backend role "auth/aws/role/app-pdam-prd-aws-auth-role": Error making API request. URL: PUT https://prd-esms.lllint.com/v1/auth/aws/role/app-pdam-prd-aws-auth-role Code: 400. Errors: * at least one bound parameter should be specified on the role
+```
+
+#### **Explanation**:
+This error indicates that when creating an AWS role in Vault, no **bound parameters** were specified. Bound parameters are required to restrict access based on IAM roles, accounts, or regions.
+
+#### **Resolution Steps**:
+1. **Identify the Role Definition**:
+   - Open the Terraform file at `team_pim-llaz-vault-pdam-prd-admin.tf` (line 16).
+   
+2. **Add Bound Parameters**:
+   - Ensure that bound parameters like `bound_iam_principal_arn`, `bound_account_id`, or `bound_region` are defined. For example:
+     ```hcl
+     resource "vault_aws_auth_backend_role" "app-pdam-prd-aws-auth-role" {
+       role = "app-pdam-prd-aws-auth-role"
+       auth_type = "iam"
+       policies = ["<policy-name>"]
+       bound_iam_principal_arn = "arn:aws:iam::<account-id>:role/<role-name>"
+       bound_account_id = "<account-id>"
+       bound_region = "<region>"
+     }
+     ```
+
+3. **Validate the Changes**:
+   - Run the following commands:
+     ```bash
+     terraform validate
+     terraform plan
+     terraform apply
+     ```
+
+4. **Re-trigger the Pipeline**:
+   - Once validated, re-run the pipeline to ensure that the issue is resolved.
+
+---
+
+### **General Resolution Steps for All Errors**:
+1. **Check Resource Definitions**:
+   - Make sure that the required fields (`bound_service_account_names`, `bound_claims`, `bound_iam_principal_arn`, etc.) are properly defined for the roles.
+
+2. **Ensure Proper Constraints**:
+   - For JWT and AWS roles, ensure that at least one bound constraint is specified.
+
+3. **Run Terraform Commands**:
+   - Always run `terraform validate`, `terraform plan`, and `terraform apply` to ensure your changes are applied correctly.
+
+4. **Pipeline Trigger**:
+   - After applying the changes, re-trigger the GitLab pipeline to ensure the roles are created successfully.
+
+---
+
+### **Conclusion**
+By ensuring that required parameters such as `bound_service_account_names`, `bound_claims`, and `bound_iam_principal_arn` are correctly defined in the Terraform configurations, you can resolve the errors encountered in creating Kubernetes, JWT, and AWS auth backend roles in Vault.
+
