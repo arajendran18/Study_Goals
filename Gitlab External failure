@@ -1,54 +1,15 @@
-To notify only if the **"External" stage (5th stage)** fails in your GitLab pipeline, you can set up a webhook that triggers notifications for specific conditions or configure a custom script in GitLab CI to send notifications only if that stage fails.
+Error: error writing Kubernetes auth backend role "auth/aut-ek8s-prd-aws-ek8s-prd-east/role/ek8s-pdam-prd-ro": Error making API request. URL: PUT https://prd-esms.lllint.com/v1/auth/aut-ek8s-prd-aws-ek8s-prd-east/role/ek8s-pdam-prd-ro Code: 400. Errors: * "bound_service_account_names" can not be empty
+with module.aut-k8s-pdam-prd.vault_kubernetes_auth_backend_role.this["aws-ek8s-prd-east.ek8s-pdam-prd-ro"]
+on .terraform/modules/aut-k8s-pdam-prd/main.tf line 60, in resource "vault_kubernetes_auth_backend_role" "this":
+resource "vault_kubernetes_auth_backend_role" "this" {
 
-Here’s how to approach this:
 
-### Step 1: Set Up the Pipeline Stages in GitLab
+Error: error writing JWT auth backend role "auth/jwt/role/app-pdam-prd-gitlab-auth-role": Error making API request. URL: PUT https://prd-esms.lllint.com/v1/auth/jwt/role/app-pdam-prd-gitlab-auth-role Code: 400. Errors: * must have at least one bound constraint when creating/updating a role
+with vault_jwt_auth_backend_role.app-pdam-prd-gitlab-auth-role
+on team_pim-llaz-vault-pdam-prd-admin.tf line 67, in resource "vault_jwt_auth_backend_role" "app-pdam-prd-gitlab-auth-role":
+resource "vault_jwt_auth_backend_role" "app-pdam-prd-gitlab-auth-role" {
 
-1. Define the five stages in your GitLab CI pipeline (`.gitlab-ci.yml`):
-
-   ```yaml
-   stages:
-     - pre
-     - terraform_format
-     - lint
-     - post
-     - external
-   ```
-
-2. For each job, assign it to the corresponding stage. The `External` stage will only run if previous stages succeed.
-
-### Step 2: Add a Notification Step Only if the "External" Stage Fails
-
-Use a combination of GitLab CI’s `allow_failure` and conditional notification steps to trigger notifications only for the `External` stage failure.
-
-1. Define a job in the **"External"** stage and use a script or webhook to send a notification only if it fails.
-
-   ```yaml
-   external:
-     stage: external
-     script:
-       - # Your commands for the external stage
-     allow_failure: false # Ensures failure is reported if this job fails
-
-   notify_failure:
-     stage: external
-     script:
-       - |
-         if [ "$CI_JOB_STATUS" == "failed" ]; then
-           curl -X POST -H 'Content-type: application/json' \
-           --data '{"text":"Pipeline failed at External stage!"}' \
-           YOUR_TEAMS_WEBHOOK_URL
-         fi
-     when: on_failure
-     dependencies:
-       - external # Runs only if the "external" stage fails
-     allow_failure: true # Ensures this doesn't affect the pipeline status further
-   ```
-
-### Explanation of the Key Configurations
-
-- **`allow_failure: false`** for `external`: Ensures that if the `External` stage fails, it stops the pipeline and marks it as failed.
-- **`notify_failure` job**: Runs only if the `external` job fails (`when: on_failure`). It checks if the `CI_JOB_STATUS` is `failed` and sends a notification.
-- **Teams Webhook URL**: Replace `YOUR_TEAMS_WEBHOOK_URL` with your actual Microsoft Teams webhook URL.
-
-With this setup, you will only receive a notification in Microsoft Teams if the `External` stage fails.
+Error: error writing AWS auth backend role "auth/aws/role/app-pdam-prd-aws-auth-role": Error making API request. URL: PUT https://prd-esms.lllint.com/v1/auth/aws/role/app-pdam-prd-aws-auth-role Code: 400. Errors: * at least one bound parameter should be specified on the role
+with vault_aws_auth_backend_role.app-pdam-prd-aws-auth-role
+on team_pim-llaz-vault-pdam-prd-admin.tf line 16, in resource "vault_aws_auth_backend_role" "app-pdam-prd-aws-auth-role":
+resource "vault_aws_auth_backend_role" "app-pdam-prd-aws-auth-role" {
