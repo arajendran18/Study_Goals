@@ -1,0 +1,68 @@
+cluster Upgrade
+1. From v1.14.x to v1.16.3
+
+
+Application Security Monitoring
+1. Infrastructure vulnerabilities
+
+Automation
+1. AWS Secret key rotation
+2. User experience report (success vs failed response)
+
+
+SNOW Form Implementation
+1. Gathered all operational requirements to meet user expectation to submit support and Enhancement Request
+2. Desinged flow chart, cataogue prototype and jira integration
+3. Documented the feedback from our ESMS team and PM
+4. Worked with SNOW team
+5. Tested, Implemented and delivered to users
+
+
+Support Ticket Analysis
+1. Observe and record the ESMS support requests/issues and scenarios
+2. Classify the data into measurable, manageable and auditable data.
+3. Analyse the data and identify top contributors
+4. Create an excel dashboard to visualise the data analysis
+5. Listed the required runbook for vault issues (Top contributor) 
+
+Runbook creation for vault top contributors
+
+To improve self service capability and operational efficiency of the vault user by creating the following SOPs
+
+1. Runbook - Policy and Permission Issues in Vault
+2. Manual Update of AD Group Object ID in Vault Identity Alias Group Mapping
+3. Runbook - Self-service Portal to identify AD Group membership, Policy & Permissions
+4. Runbook - Missing Team-Wide Azure AD Group Membership
+5. Runbook - Vault Policy Misconfiguration
+6. Runbook - Vault Path Configuration Issue
+7. Runbook - User Errors in Vault: Common Issues and Solutions
+8. Runbook - Teammate can access, but the reported user cannot access the path
+9. Runbook - Vault Path-Specific Issues
+10.Runbook - Vault Configuration or Maintenance Issues
+
+Terraform Pipeline Integration with Teams Channel
+1. Email alerts are not organised previously.
+2. Enabled webhooks to trigger the TFC failure alerts to MS Teams channel
+3. Helped monitoring the daily reported failures and maintain the repos error free.
+
+Support Tasks
+1. Onboarding Walkthrough - Provided Guidance to users
+2. Pipeline failures
+3. Permission denial 
+4. Approving the Merge Requests on priority
+5. Handling SNOW automation failure alerts via SNOW
+
+
+Fulfilled SNOW automated failures
+1. To obtain the repeated errors and worked with SNOW team
+2. Manually fulfilled the request
+
+
+Future Plan FY25 - Q1
+Vault Cluster upgrade
+
+
+
+
+
+
