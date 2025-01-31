@@ -1,0 +1,127 @@
+**Q4 Accomplishments & Future Plan (FY25 - Q1)**
+
+---
+
+## **Slide 1: Title Slide**  
+**Title:** Q4 Accomplishments & Future Plan (FY25 - Q1)  
+**Subtitle:** Key Actions, Outcomes, and Data Insights  
+
+---
+
+## **Slide 2: Cluster Upgrade**  
+### **Actions Taken:**  
+- Upgraded Vault cluster from **v1.14.x to v1.16.3** in SBX, NPD, and PRD environments with **zero downtime**.  
+### **Outcomes:**  
+- Seamless upgrade without impacting operations.  
+- Verified cluster functionality post-upgrade.  
+### **Data Points:**  
+- **3 environments successfully upgraded.**  
+
+---
+
+## **Slide 3: Monitoring**  
+### **Actions Taken:**  
+- **Application Security Monitoring:** Resolved GitLab vulnerability issues.  
+- **Terraform Cloud Pipeline:** Integrated MS Teams alerts, resolved failures, and documented issues.  
+- **GitLab Pipeline Fixes:** Addressed Vault-related errors.  
+- Fixed security misconfigurations:  
+  - Overly permissive KMS keys  
+  - Missing access logs  
+  - Deletion protection disabled  
+### **Outcomes:**  
+- Enhanced security and compliance.  
+- Continuous monitoring and faster resolution.  
+### **Data Points:**  
+- **All repositories cleaned up and error-free.**  
+- **MS Teams integration enabled for real-time alerts.**  
+
+---
+
+## **Slide 4: Automation**  
+### **Actions Taken:**  
+- Developed Python script to **validate AWS credentials** post-rotation.  
+- Created Python script to **fetch success (2XX, 4XX) and failure (5XX) responses** from LB backend metrics.  
+### **Outcomes:**  
+- Automated AWS credential validation, reducing manual effort.  
+- Improved LB monitoring for troubleshooting.  
+### **Data Points:**  
+- **100% validation** of AWS credentials post-rotation.  
+- **Real-time tracking** of LB HTTP response codes.  
+
+---
+
+## **Slide 5: SNOW Form Implementation**  
+### **Actions Taken:**  
+- Gathered requirements for **support & enhancement request submissions**.  
+- Designed **flowchart, catalog prototype, and Jira integration**.  
+- Worked with SNOW team, documented feedback, and implemented the solution.  
+- Deployed **GETHELP & Enhancement Request forms**.  
+### **Outcomes:**  
+- Improved user experience and ticket automation.  
+### **Data Points:**  
+- **2 forms designed, tested, and deployed.**  
+
+---
+
+## **Slide 6: Support Ticket Analysis**  
+### **Actions Taken:**  
+- Analyzed ESMS support requests and classified issues.  
+- Created an **Excel dashboard** for visualization.  
+- Identified top Vault issue contributors and developed **runbooks**.  
+### **Outcomes:**  
+- Better tracking of recurring issues.  
+- Reduced manual interventions with self-service documentation.  
+### **Data Points:**  
+- **X% reduction** in repeated support queries.  
+- **Top 5 Vault issues documented with solutions.**  
+
+---
+
+## **Slide 7: Terraform Pipeline Integration with Teams**  
+### **Actions Taken:**  
+- Enabled **webhooks** to send Terraform failure alerts to MS Teams.  
+- Standardized email alerts and improved failure visibility.  
+### **Outcomes:**  
+- Faster response times for pipeline failures.  
+- Proactive monitoring of daily issues.  
+### **Data Points:**  
+- **X Terraform pipeline failures resolved per month.**  
+
+---
+
+## **Slide 8: Support Tasks**  
+### **Actions Taken:**  
+- **User Onboarding Walkthroughs:** Provided guidance for new users.  
+- Resolved **Vault permission denial issues**.  
+- Prioritized **Merge Request approvals**.  
+- Managed SNOW automation failure alerts.  
+### **Outcomes:**  
+- Faster support response times.  
+- Smoother onboarding experience.  
+### **Data Points:**  
+- **X onboarding sessions conducted.**  
+- **X merge requests reviewed and approved.**  
+
+---
+
+## **Slide 9: Fulfilled SNOW Automated Failures**  
+### **Actions Taken:**  
+- Identified **repeated errors** and collaborated with the SNOW team.  
+- Manually fulfilled unresolved requests.  
+### **Outcomes:**  
+- Reduced backlog of pending SNOW requests.  
+- Root causes identified and addressed.  
+### **Data Points:**  
+- **X SNOW tickets manually resolved.**  
+
+---
+
+## **Slide 10: Future Plan (FY25 - Q1)**  
+- Plan and execute **Vault Cluster Upgrade enhancements**.  
+- Optimize Terraform pipelines and monitoring.  
+- Expand automation for AWS secret validation.  
+- Improve SNOW ticket analysis for faster issue resolution.  
+- Strengthen security compliance in GitLab repositories.  
+
+---
+
