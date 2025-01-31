@@ -1,0 +1,56 @@
+cluster Upgrade
+1. From v1.14.x to v1.16.3 with no downtime in SBX, NPD and PRD
+
+
+Monitoring:
+1. Application Security Monitoring: Vulnerability issue reported in GitLab - Exported the list and resolved
+2. Integrated Terraform cloud pipeline with MS teams channel and addressed, resolved and documented the pipeline failures
+3. Gitlab pipeline issues related to vault configuration addressed and resolved
+4. Example: KMS key overpermissive nature, Access logs not enabled, Deletion protection disabled etc, those are all fixed and repos are error free
+
+Automation:
+ 
+1. Developed python script to validate the dynamic aws credentials worked properly after automatically rotating the individual IAM user's access and secret key.
+2. Created the python script to fetch the Success (2XX and 4XX) and failure responses (5XX) from the LB's HTTP_Code backend
+
+
+SNOW Form Implementation
+1. Gathered all operational requirements to meet user expectation to submit support and Enhancement Request
+2. Desinged flow chart, cataogue prototype and jira integration
+3. Documented the feedback from our ESMS team and PM
+4. Worked with SNOW team
+5. Tested, Implemented and delivered to users (GETHELP and Enhancement request form)
+
+
+Support Ticket Analysis
+1. Observe and record the ESMS support requests/issues and scenarios
+2. Classify the data into measurable, manageable and auditable data.
+3. Analyse the data and identify top contributors
+4. Create an excel dashboard to visualise the data analysis
+5. Listed the required runbook for vault issues (Top contributor) 
+
+Runbook creation for vault top contributors
+
+To improve self service capability and operational efficiency of the vault user by creating the following SOPs
+
+
+Terraform Pipeline Integration with Teams Channel
+1. Email alerts are not organised previously.
+2. Enabled webhooks to trigger the TFC failure alerts to MS Teams channel
+3. Helped monitoring the daily reported failures and maintain the repos error free.
+
+Support Tasks
+1. Onboarding Walkthrough - Provided Guidance to users
+2. Pipeline failures/Terraform pipeline issues
+3. Permission denial issue in vault
+4. Approving the Merge Requests on priority
+5. Handling SNOW automation failure alerts via SNOW
+
+
+Fulfilled SNOW automated failures
+1. To obtain the repeated errors and worked with SNOW team
+2. Manually fulfilled the request
+
+
+Future Plan FY25 - Q1
+Vault Cluster upgrade
