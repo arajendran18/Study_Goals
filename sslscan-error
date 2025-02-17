@@ -1,3 +1,17 @@
 cc -o sslscan -Wall -Wformat=2 -Wformat-security -Wno-deprecated-declarations -pie -z relro -z now -L/usr/local/lib -L/usr/local/ssl/lib -L/usr/local/opt/openssl/lib -L/opt/local/lib -D_FORTIFY_SOURCE=2 -fstack-protector-all -fPIE -std=gnu11 -I/usr/local/include -I/usr/local/ssl/include -I/usr/local/ssl/include/openssl -I/usr/local/opt/openssl/include -I/opt/local/include -I/opt/local/include/openssl  -DVERSION=\"2.1.6-9-g7ba5ee0\" sslscan.c -lssl -lcrypto -ldl
 make: cc: Command not found
 make: *** [Makefile:118: sslscan] Error 127
+
+oot@ip-10-240-101-153:~/sslscan# sudo apt install -y gcc
+Reading package lists... Done
+Building dependency tree
+Reading state information... Done
+You might want to run 'apt --fix-broken install' to correct these.
+The following packages have unmet dependencies:
+ gcc : Depends: cpp (= 4:9.3.0-1ubuntu2) but it is not going to be installed
+       Depends: gcc-9 (>= 9.3.0-3~) but it is not going to be installed
+       Recommends: libc6-dev but it is not going to be installed or
+                   libc-dev
+ sslscan : Depends: libc6 (>= 2.38) but 2.31-0ubuntu9.17 is to be installed
+           Depends: libssl3t64 (>= 3.0.0) but it is not installable
+E: Unmet dependencies. Try 'apt --fix-broken install' with no packages (or specify a solution).
