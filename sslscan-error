@@ -15,3 +15,8 @@ The following packages have unmet dependencies:
  sslscan : Depends: libc6 (>= 2.38) but 2.31-0ubuntu9.17 is to be installed
            Depends: libssl3t64 (>= 3.0.0) but it is not installable
 E: Unmet dependencies. Try 'apt --fix-broken install' with no packages (or specify a solution).
+
+
+sudo apt remove sslscan -y
+wget http://ftp.us.debian.org/debian/pool/main/s/sslscan/sslscan_2.0.6-1_amd64.deb
+sudo dpkg -i sslscan_2.0.6-1_amd64.deb
