@@ -1,0 +1,21 @@
+resource "aws_kms_key" "primary" {
+  provider                = aws.usw2
+  deletion_window_in_days = 7
+  description             = "AWS KMS Customer-managed key used for Vault auto-unseal and encryption"
+  enable_key_rotation     = true
+  is_enabled              = true
+  key_usage               = "ENCRYPT_DECRYPT"
+
+  tags = { Name = "${local.solution_name}-unseal-key" }
+}
+
+resource "aws_kms_key" "dr" {
+  provider                = aws.use1
+  deletion_window_in_days = 7
+  description             = "AWS KMS Customer-managed key used for Vault auto-unseal and encryption"
+  enable_key_rotation     = true
+  is_enabled              = true
+  key_usage               = "ENCRYPT_DECRYPT"
+
+  tags = { Name = "${local.solution_name}-unseal-key" }
+}
