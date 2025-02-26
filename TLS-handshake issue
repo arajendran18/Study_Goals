@@ -1,0 +1,64 @@
+Yes, if **older clients or browsers** that **do not support TLS 1.2+** try to connect to the **ELB**, they will **fail to establish a secure connection** and receive an error message.
+
+### **What Will Happen When an Older Client Hits the ELB?**  
+If the **ELB security policy enforces TLS 1.2+,** older clients using **TLS 1.0 or 1.1** will experience:
+
+1. **SSL/TLS Handshake Failure**  
+   - The client and ELB attempt to negotiate a secure connection.  
+   - Since ELB only supports TLS 1.2 or higher, it rejects the client's request.  
+   - The client gets an error like:
+     - **Browser Error**:  
+       > “Secure Connection Failed” or “ERR_SSL_VERSION_OR_CIPHER_MISMATCH”  
+     - **Curl Command Error**:  
+       ```bash
+       curl: (35) SSL connect error
+       ```
+     - **Application Log Error**:  
+       ```
+       javax.net.ssl.SSLHandshakeException: No appropriate protocol (protocol is disabled or cipher suites are inappropriate)
+       ```
+
+2. **Connection Refused**  
+   - If the client does not support **modern ciphers** required by TLS 1.2, ELB refuses to accept the connection.  
+
+3. **Error in CloudWatch Logs**  
+   - If ELB **access logs** are enabled, they will show `TLS Protocol Mismatch` errors for such clients.  
+
+---
+
+### **How to Identify if Old Clients Are Still Using TLS 1.0 or 1.1?**  
+To analyze whether any clients are still using **outdated TLS versions**, follow these methods:
+
+#### **1️⃣ Check AWS ELB Access Logs (Recommended)**
+- If **ELB access logging** is enabled (stored in **S3**), analyze the logs for **TLS versions used** by clients.  
+- Run an AWS Athena query or use `grep` to find non-TLS 1.2 connections.  
+
+Example:
+```bash
+grep -i "TLSv1.0\|TLSv1.1" elb_access_log.txt
+```
+
+#### **2️⃣ Use AWS CloudWatch Metrics (TLSNegotiationErrorCount)**
+- AWS ELB provides a metric **TLSNegotiationErrorCount**, which shows failed TLS handshake attempts.  
+- If this metric increases after enforcing **TLS 1.2**, it indicates that older clients are failing to connect.  
+
+#### **3️⃣ Check Application Logs**
+- If your application logs TLS version details, search for **TLS handshake failures** in logs:
+  ```bash
+  grep -i "SSLHandshakeException" /var/log/app.log
+  ```
+
+#### **4️⃣ Capture Network Traffic Using AWS VPC Flow Logs**
+- Enable **VPC Flow Logs** to capture rejected traffic due to **TLS mismatches**.  
+
+---
+
+### **What If You Still Need to Support Older Clients?**
+- **Short-Term Fix:** Temporarily allow **TLS 1.0 & 1.1** by using `ELBSecurityPolicy-TLS-1-1-2017-01`.  
+- **Long-Term Fix:** Encourage **clients to upgrade** to support TLS 1.2+ (e.g., update browsers, libraries).  
+
+---
+
+### **Final Answer: Will Older Clients Get a Failure Message?**
+✅ **Yes!**  
+If an **older client using TLS 1.0 or 1.1** tries to connect to an **ELB enforcing TLS 1.2+,** they will see an **SSL/TLS handshake failure error** and be unable to access Vault. 🚫
