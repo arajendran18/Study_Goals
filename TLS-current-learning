@@ -1,0 +1,65 @@
+### **Alice & Bob: Understanding TLS, Ciphers, ELB Security Policy, and Vault Server Config**  
+
+#### **The Story**  
+Alice is an **Application Engineer** managing a secure web application that relies on **Vault** to store and retrieve secrets. Bob is a **Security Engineer** responsible for ensuring that all network communications are encrypted properly.  
+
+#### **Setting the Stage: The Secure Connection**  
+Alice's application is hosted behind an **AWS Elastic Load Balancer (ELB)**, which forwards requests to Vault servers. To establish a secure connection, Vault uses **TLS (Transport Layer Security)** to encrypt traffic.  
+
+Bob has defined security policies that specify which **TLS versions and cipher suites** should be used to secure communication between the ELB and Vault. However, after a recent upgrade, Alice noticed that her application couldn't connect to Vault through the ELB anymore.  
+
+### **Breaking Down the Problem**  
+
+#### **1. The Handshake Process**  
+When Alice’s application tries to communicate with Vault, a **TLS handshake** occurs:  
+1. **Client Hello**: Alice’s application sends a request to the ELB, listing supported TLS versions and cipher suites.  
+2. **Server Hello**: ELB responds with the selected TLS version and cipher suite based on its security policy.  
+3. **Certificate Exchange**: ELB presents its **leaf certificate**, which is signed by an **Intermediate CA**. The Intermediate CA, in turn, is signed by a **Root CA**.  
+4. **Key Exchange & Session Establishment**: If everything matches, a secure session is established, and encrypted data can be exchanged.  
+
+#### **2. The Issue: A Cipher Mismatch**  
+- The ELB was configured with **ELBSecurityPolicy-2016-08**, which supports **TLS 1.0, TLS 1.1, and TLS 1.2** with an older set of ciphers.  
+- The Vault server was recently updated to enforce **TLS 1.2 only**, and Bob explicitly configured a **stronger set of ciphers**:  
+  - `TLS_RSA_WITH_AES_256_GCM_SHA384`  
+  - `TLS_AES_128_GCM_SHA256`  
+  - `TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256`  
+- However, ELBSecurityPolicy-2016-08 does not support **some of these stronger ciphers**.  
+- The result? **TLS handshake failure**—ELB and Vault couldn’t agree on a common cipher suite.  
+
+### **Fixing the Problem**  
+Bob investigates and suggests two options:  
+#### **Option 1: Update the ELB Security Policy**  
+- Upgrade to `ELBSecurityPolicy-TLS-1-2-2017-01`, which **only allows TLS 1.2** and includes stronger cipher suites that Vault supports.  
+- This ensures that ELB and Vault can **agree on a common cipher** and successfully complete the handshake.  
+
+#### **Option 2: Modify Vault’s TLS Configuration**  
+- Add `TLS_RSA_WITH_AES_256_GCM_SHA384` at the **beginning** of the cipher list in Vault's configuration.  
+- This ensures compatibility with ELBSecurityPolicy-2016-08, even if it's not the best long-term security choice.  
+
+### **Understanding Certificates in the Handshake**  
+1. **Root CA (Certificate Authority)**: The highest level, trusted by all clients.  
+2. **Intermediate CA**: Issued by the Root CA to sign **Leaf Certificates**.  
+3. **Leaf Certificate**: The actual certificate used by Vault’s TLS listener.  
+
+In this case, Vault’s **leaf certificate was signed by an Intermediate CA**, but ELB wasn’t properly configured to trust the full chain, which caused additional verification failures. Bob had to:  
+- Ensure **ELB had the full certificate chain** installed.  
+- Verify that **the Root CA was trusted** by Vault and the client applications.  
+
+### **Final Outcome**  
+- **Bob updated the ELB Security Policy** to `TLS-1-2-2017-01`, ensuring it supports Vault’s ciphers.  
+- **Alice’s application successfully reconnected to Vault** because the handshake could now complete.  
+- Both learned a valuable lesson about **TLS versioning, cipher suites, and certificate trust chains**!  
+
+---
+
+### **Key Takeaways from the Story**  
+| **Component**            | **Description** |
+|--------------------------|----------------|
+| **TLS Handshake**        | Ensures secure communication between ELB and Vault. |
+| **Cipher Suites**        | Determine how encryption is applied; ELB and Vault must agree on a common one. |
+| **ELB Security Policy**  | Defines the allowed TLS versions and ciphers (e.g., 2016-08 vs. TLS-1-2-2017-01). |
+| **Vault Config**         | Specifies supported TLS versions and ciphers for incoming connections. |
+| **Root CA & Intermediate CA** | Validate the authenticity of certificates used in the handshake. |
+| **Leaf Certificate**     | The certificate Vault presents during the handshake. |
+
+Would you like me to refine this with any additional technical details? 😊
