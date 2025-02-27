@@ -1,0 +1,30 @@
+	
+Robert Highley (HashiCorp)
+
+Feb 25, 2025, 10:14 AM PST
+
+Hi Siva,
+ 
+That is great news!  Thanks for the update.  On these questions: 
+ 
+1. After specifiying the cipher suites in the vault config, there's no TLS cipher issue even with I switched back to ELBSecurityPolicy-2016-08 security policy. So, which one is the preffered ELBSecurityPolicy-2016-08 security policy or ELBSecurityPolicy-TLS-1-2-2017-01?
+ 
+A: The 2016-08 is the default policy if none is specified for the ELB if I recall correctly.  The 2-2017-01 is the latest policy per AWS:
+ELBSecurityPolicy-2016-08: This is an older security policy that supports a broader range of TLS protocols, including TLS 1.0, TLS 1.1, and TLS 1.2. It also includes a wider set of ciphers, some of which are now considered less secure. This policy is the default for HTTPS listeners created using the AWS CLI.5
+ELBSecurityPolicy-TLS-1-2-2017-01: This policy is more restrictive and only supports TLS 1.2, which is a more secure protocol. It includes a more limited set of ciphers, focusing on those that are currently considered strong. This policy is recommended for environments where security is a higher priority and compatibility with older clients is less of a concern.4
+ 
+Observations:
+Security: If security is your primary concern, ELBSecurityPolicy-TLS-1-2-2017-01 may be better choice as it appears to support only TLS 1.2 and uses stronger ciphers.
+Compatibility: If you need to support older clients or browsers that do not support TLS 1.2, ELBSecurityPolicy-2016-08 might be necessary, but you should consider the security implications.
+ 
+2. I was looking for the equivalent ciphers in https://go.dev/src/crypto/tls/cipher_suites.go for the cipher in the ELB security polcy but I can't find equivalent cipher for few. Can you help me to just map the ciphers between the ELB and the go cipher suites, just to make sure I don't miss anything.
+ 
+A:  Some of the naming conventions differ from Go and AWS ELB specification.  I believe it is negotiating only TLS_RSA_WITH_AES_256_GCM_SHA384 with Vault based upon your config.  The other ciphersuites are for compatibility for other clients.  Base upon each ciphersuites strengths/weaknesses you may wish to employ only a subset of these.  It really depends upon your security posture and need for compatibility.  You may wish to have your Security Team review these for alignment with your current security posture.
+
+ 
+3.  Will be a fix for this or going forward we have to explicitly specify the cipher suits in the vault config?   
+ 
+A:  This work around is needed due to the AWS ELB not handling certain ciphersuites.  Manually specifying ciphersuites for compatibility is not considered a bug on Vault's part.
+
+ 
+ 
