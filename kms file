@@ -19,3 +19,47 @@ resource "aws_kms_key" "dr" {
 
   tags = { Name = "${local.solution_name}-unseal-key" }
 }
+
+
+resource "aws_kms_key" "primary" {
+  provider                = aws.usw2
+  deletion_window_in_days = 7
+  description             = "AWS KMS Customer-managed key used for Vault auto-unseal and encryption"
+  enable_key_rotation     = true
+  is_enabled              = true
+  key_usage               = "ENCRYPT_DECRYPT"
+
+  tags = { Name = "${local.solution_name}-unseal-key" }
+}
+
+resource "aws_kms_key" "dr" {
+  provider                = aws.use1
+  deletion_window_in_days = 7
+  description             = "AWS KMS Customer-managed key used for Vault auto-unseal and encryption"
+  enable_key_rotation     = true
+  is_enabled              = true
+  key_usage               = "ENCRYPT_DECRYPT"
+
+  tags = { Name = "${local.solution_name}-unseal-key" }
+}
+
+resource "aws_kms_key" "self_signed_certs" {
+  provider                 = aws.usw2
+  deletion_window_in_days  = 7
+  description              = "AWS KMS Customer-managed key used for Vault self-signed certificates"
+  is_enabled               = true
+  customer_master_key_spec = "ECC_NIST_P384"
+  key_usage                = "SIGN_VERIFY"
+  multi_region             = true
+
+  tags = { Name = "${local.solution_name}-signing-key" }
+}
+
+resource "aws_kms_replica_key" "self_signed_certs" {
+  provider                = aws.use1
+  deletion_window_in_days = 7
+  primary_key_arn         = aws_kms_key.self_signed_certs.arn
+
+  tags = { Name = "${local.solution_name}-signing-key" }
+}
+
