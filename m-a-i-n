@@ -1,0 +1,106 @@
+module "primary" {
+  providers = {
+    aws = aws.usw2
+  }
+
+  source                = "./modules/vault_cluster"
+  vault_version         = var.vault_version
+  instance_profile_name = aws_iam_instance_profile.vault.name
+  lb_certificate_arn    = local.certificate_arns[local.solution_prefix]
+  elb_certificate_arn   = local.iam_cert_arns[local.solution_prefix]
+  self_signed_cert_path = "s3://${aws_s3_bucket.vault_config_bucket.bucket}/self-signed-certs"
+  license_path          = "s3://${aws_s3_bucket_object.vault_license.bucket}/${aws_s3_bucket_object.vault_license.key}"
+  private_subnet_ids    = local.private_subnet_ids[local.solution_prefix]
+  private_subnet_cidrs  = local.private_subnet_cidrs[local.solution_prefix]
+  public_subnet_ids     = local.public_subnet_ids[local.solution_prefix]
+  this_region_cidr      = local.vpc_cidrs[local.solution_prefix]
+  opposite_region_cidr  = local.vpc_cidrs["${local.solution_prefix}-dr"]
+  cluster_address       = local.cluster_addresses[local.solution_prefix]
+  external_address      = local.external_addresses[local.solution_prefix]
+  solution_name         = local.solution_prefix
+  unseal_key_arn        = aws_kms_key.primary.arn
+  signing_key_arn       = aws_kms_key.self_signed_certs.arn
+  vpc_id                = local.vpc_ids[local.solution_prefix]
+  global_tags           = var.global_tags
+  monitoring_role_arn   = aws_iam_role.instance_role.arn
+  allowed_inbound_cidrs = concat(var.allowed_inbound_cidrs, local.accelerator_cidrs)
+  eks_inbound_cidrs     = var.eks_inbound_cidrs
+}
+
+module "dr" {
+  providers = {
+    aws = aws.use1
+  }
+
+  source                = "./modules/vault_cluster"
+  vault_version         = var.vault_version
+  instance_profile_name = aws_iam_instance_profile.vault.name
+  lb_certificate_arn    = local.certificate_arns["${local.solution_prefix}-dr"]
+  elb_certificate_arn   = local.iam_cert_arns["${local.solution_prefix}-dr"]
+  lb_health_check_path   = "${var.lb_health_check_path}&drsecondarycode=200"
+  self_signed_cert_path = "s3://${aws_s3_bucket.vault_config_bucket.bucket}/self-signed-certs"
+  license_path          = "s3://${aws_s3_bucket_object.vault_license.bucket}/${aws_s3_bucket_object.vault_license.key}"
+  private_subnet_ids    = local.private_subnet_ids["${local.solution_prefix}-dr"]
+  private_subnet_cidrs  = local.private_subnet_cidrs["${local.solution_prefix}-dr"]
+  public_subnet_ids     = local.public_subnet_ids["${local.solution_prefix}-dr"]
+  this_region_cidr      = local.vpc_cidrs["${local.solution_prefix}-dr"]
+  opposite_region_cidr  = local.vpc_cidrs[local.solution_prefix]
+  cluster_address       = local.cluster_addresses["${local.solution_prefix}-dr"]
+  external_address      = local.external_addresses["${local.solution_prefix}-dr"]
+  solution_name         = "${local.solution_prefix}-dr"
+  unseal_key_arn        = aws_kms_key.dr.arn
+  signing_key_arn       = aws_kms_replica_key.self_signed_certs.arn
+  vpc_id                = local.vpc_ids["${local.solution_prefix}-dr"]
+  global_tags           = var.global_tags
+  monitoring_role_arn   = aws_iam_role.instance_role.arn
+  allowed_inbound_cidrs = concat(var.allowed_inbound_cidrs, local.accelerator_cidrs)
+  eks_inbound_cidrs     = var.eks_inbound_cidrs
+}
+
+module "pr-secondary" {
+  providers = {
+    aws = aws.use1
+  }
+
+  source                = "./modules/vault_cluster"
+  vault_version         = var.vault_version
+  instance_profile_name = aws_iam_instance_profile.vault.name
+  lb_certificate_arn    = local.certificate_arns["${local.solution_prefix}-pr"]
+  elb_certificate_arn   = local.iam_cert_arns["${local.solution_prefix}-pr"]
+  self_signed_cert_path = "s3://${aws_s3_bucket.vault_config_bucket.bucket}/self-signed-certs"
+  license_path          = "s3://${aws_s3_bucket_object.vault_license.bucket}/${aws_s3_bucket_object.vault_license.key}"
+  private_subnet_ids    = local.private_subnet_ids["${local.solution_prefix}-pr"]
+  private_subnet_cidrs  = local.private_subnet_cidrs["${local.solution_prefix}-pr"]
+  public_subnet_ids     = local.public_subnet_ids["${local.solution_prefix}-pr"]
+  this_region_cidr      = local.vpc_cidrs["${local.solution_prefix}-pr"]
+  opposite_region_cidr  = local.vpc_cidrs[local.solution_prefix]
+  cluster_address       = local.cluster_addresses["${local.solution_prefix}-pr"]
+  external_address      = local.external_addresses["${local.solution_prefix}-pr"]
+  solution_name         = "${local.solution_prefix}-east"
+  unseal_key_arn        = aws_kms_key.dr.arn
+  signing_key_arn       = aws_kms_replica_key.self_signed_certs.arn
+  vpc_id                = local.vpc_ids["${local.solution_prefix}-pr"]
+  global_tags           = var.global_tags
+  monitoring_role_arn   = aws_iam_role.instance_role.arn
+  allowed_inbound_cidrs = concat(var.allowed_inbound_cidrs, local.accelerator_cidrs)
+  eks_inbound_cidrs     = var.eks_inbound_cidrs
+  cloudwatch_log_groups = {
+    syslog   = "pr-/vault/syslog"
+    messages = "pr-/vault/messages"
+    debug    = "pr-/vault/debug"
+    audit    = "pr-/vault/audit"
+  }
+}
+
+resource "aws_vpc_peering_connection" "primary_dr_link" {
+  provider    = aws.usw2
+  vpc_id      = local.vpc_ids[local.solution_prefix]
+  peer_vpc_id = local.vpc_ids["${local.solution_prefix}-dr"]
+  peer_region = "us-east-1"
+}
+
+resource "aws_vpc_peering_connection_accepter" "primary_dr_link" {
+  provider                  = aws.use1
+  vpc_peering_connection_id = aws_vpc_peering_connection.primary_dr_link.id
+  auto_accept               = true
+}
