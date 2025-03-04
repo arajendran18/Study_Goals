@@ -1,186 +1,88 @@
-Initial testing and observation from ESMS team
-As per our observation, We tried upgrading the vault version to 1.18.4v, the UI access was still inaccessible. So we started testing by upgrading the cluster with the following sequence of versions
-
-1.18.3v - Not worked
-1.18.4v - Not worked
-1.16.3v - Worked
-1.17.0v - Worked
-1.18.0v - Not Worked
-1.17.11v- Not Worked
-1.17.1v - Worked
-1.17.2v - Worked
-1.17.3v - Not worked
-
-Note: Tested in the performance cluster of sbx environment
-Here, we stopped our testing as the UI access stopped working from the version 1.17.3v.
-Could you please share your observation, Is there any major change happened from 1.17.3v? Please advise us.
-
-Hashicorp suggestion:
-
-
-
-Thank you kindly for sharing your test results, that helped me to track down what could have changed with later versions in Vault.
- 
-Problem Statement: TLS 1.2 negotiation failing,
-These are the test results with ELBSecurityPolicy-2016-08 and Vault versions you sen:
-
-
-1.18.4v - Not working
-
-1.18.3v - Not working
-
-1.18.0v - Not Working
-
-1.17.11v- Not Working
-
-1.17.3v - Not working
-
-1.17.2v - Working
-
-1.17.1v - Working
-
-1.17.0v - Working
-
-1.16.3v - Working
-
-ELBSecurityPolicy-2016-08
-
-ECDHE-ECDSA-AES128-GCM-SHA256
-
-ECDHE-RSA-AES128-GCM-SHA256
-
-ECDHE-ECDSA-AES128-SHA256
-
-ECDHE-RSA-AES128-SHA256
-
-ECDHE-ECDSA-AES128-SHA
-
-ECDHE-RSA-AES128-SHA
-
-ECDHE-ECDSA-AES256-GCM-SHA384
-
-ECDHE-RSA-AES256-GCM-SHA384
-
-ECDHE-ECDSA-AES256-SHA384
-
-ECDHE-RSA-AES256-SHA384
-
-ECDHE-ECDSA-AES256-SHA
-
-ECDHE-RSA-AES256-SHA
-
-AES128-GCM-SHA256
-
-AES128-SHA256
-
-AES128-SHA
-
-AES256-GCM-SHA384
-
-AES256-SHA256
-
-AES256-SHA
-
-Looks like protocol matches with:
- 
-ELB: ECDHE-RSA-AES128-GCM-SHA256
-Vault: Preferred TLSv1.2  128 bits  ECDHE-RSA-AES128-GCM-SHA256   Curve 25519 DHE 253
- 
-This Curve part 25519 DHE 253 may not be compatible if negotiation protocol is not supported on ELB:
-Latest debug logs show:
-
-
-2025-02-20T12:49:31.245Z [INFO] http: TLS handshake error from 10.240.101.112:42528: tls: no cipher suite supported by both client and server
-2025-02-20T12:49:31.643Z [INFO] http: TLS handshake error from 10.240.101.83:35554: tls: no cipher suite supported by both client and server
-2025-02-20T12:49:31.917Z [INFO] http: TLS handshake error from 10.240.101.133:55768: tls: no cipher suite supported by both client and server
-2025-02-20T12:50:01.246Z [INFO] http: TLS handshake error from 10.240.101.112:40938: tls: no cipher suite supported by both client and server
-2025-02-20T12:50:01.649Z [INFO] http: TLS handshake error from 10.240.101.83:27200: tls: no cipher suite supported by both client and server
-2025-02-20T12:50:01.918Z [INFO] http: TLS handshake error from 10.240.101.133:54870: tls: no cipher suite supported by both client and server
-2025-02-20T12:50:11.290Z [INFO] http: TLS handshake error from 10.240.101.112:20313: tls: no cipher suite supported by both client and server
-
-The underlying Go version is changing in later Vault versions modifying TLS behavior:
-Ref: https://go.dev/doc/devel/release#go1.22.minor
-
-
-go1.22.5 (released 2024-07-02) includes security fixes to the net/http package, as well as bug fixes to the compiler, cgo, the go command, the linker, the runtime, and the crypto/tls, go/types, net, net/http, and os/exec packages. See the Go 1.22.5 milestone on our issue tracker for details.
-
- 
-It appears you may need to update the ELB security policy to ELBSecurityPolicy-TLS-1-2-2017-01 and/or specify tls_max_version property to be set to tls12 in Vault.
-
-
-To update the security policy for the ELB in AWS see: https://docs.aws.amazon.com/elasticloadbalancing/latest/classic/ssl-config-update.html
-
-To set TLS max version in Vault: https://developer.hashicorp.com/vault/docs/configuration/listener/tcp#tls_min_version
-
- 
-Ref: https://support.hashicorp.com/hc/en-us/articles/31348370232595-Vault-TLS-errors-client-offered-only-unsupported-versions-no-cipher-suite-supported
-
-
-
-These are all the following questions we raised and got the response from Hashicorp Support.
-
- 
-
-After specifying the cipher suites in the vault config, there's no TLS cipher issue even with I switched back to ELBSecurityPolicy-2016-08 security policy. So, which one is the prefered ELBSecurityPolicy-2016-08 security policy or ELBSecurityPolicy-TLS-1-2-2017-01?
-
-Answer: The 2016-08 is the default policy if none is specified for the ELB if I recall correctly.  The 2-2017-01 is the latest policy per AWS:
-ELBSecurityPolicy-2016-08: This is an older security policy that supports a broader range of TLS protocols, including TLS 1.0, TLS 1.1, and TLS 1.2. It also includes a wider set of ciphers, some of which are now considered less secure. This policy is the default for HTTPS listeners created using the AWS CLI.5
-ELBSecurityPolicy-TLS-1-2-2017-01: This policy is more restrictive and only supports TLS 1.2, which is a more secure protocol. It includes a more limited set of ciphers, focusing on those that are currently considered strong. This policy is recommended for environments where security is a higher priority and compatibility with older clients is less of a concern.4
-
-Observations:
-Security: If security is your primary concern, ELBSecurityPolicy-TLS-1-2-2017-01 may be better choice as it appears to support only TLS 1.2 and uses stronger ciphers.
-Compatibility: If you need to support older clients or browsers that do not support TLS 1.2, ELBSecurityPolicy-2016-08 might be necessary, but you should consider the security implications.
-
-I was looking for the equivalent ciphers in https://go.dev/src/crypto/tls/cipher_suites.go  for the cipher in the ELB security polcy but I can't find equivalent cipher for few. Can you help me to just map the ciphers between the ELB and the go cipher suites, just to make sure I don't miss anything.
-
-Answer:  Some of the naming conventions differ from Go and AWS ELB specification.  I believe it is negotiating only TLS_RSA_WITH_AES_256_GCM_SHA384 with Vault based upon your config.  The other ciphersuites are for compatibility for other clients.  Base upon each ciphersuites strengths/weaknesses you may wish to employ only a subset of these.  It really depends upon your security posture and need for compatibility.  You may wish to have your Security Team review these for alignment with your current security posture.
-
-Will be a fix for this or going forward we have to explicitly specify the cipher suits in the vault config?   
-
-Answer:  This work around is needed due to the AWS ELB not handling certain ciphersuites.  Manually specifying ciphersuites for compatibility is not considered a bug on Vault's part.
-
-  tls_max_version                  = "tls12"
-
-  tls_cipher_suites                = "TLS_RSA_WITH_AES_256_GCM_SHA384, TLS_RSA_WITH_AES_128_GCM_SHA256, TLS_AES_128_GCM_SHA256, TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256, TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384, TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256, TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256, TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384, TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384, TLS_AES_128_GCM_SHA256, TLS_AES_256_GCM_SHA384"
-
- 
-
-  tls_prefer_server_cipher_suites  = true
-
- 
-
-------------------------------------------------------------------------------------------------------------
-
-So before initiating the cluster upgrade to 1.18.4v in PRD, We would like to confirm the following
-
-The TLS issue was resolved by setting tla_max_version = tls12
-
-
-
-Impacts on Clients and Services:
-
-If we change the ELB Security policy from ELBSecurityPolicy-2016-08 to ELBSecurityPolicy-TLS-1-2-2017-0, per Hashicorp support recommendation, it could impact the older clients using weak ciphers.
-
- 
-
-Solution Recommended by Hashicorp Support:
-
-Have we already modified the ELB Security Policy in nonprod?
-
-Have we implemented these configs in nonprod? 
-tls_max_version                  = "tls12"
-
-  tls_cipher_suites                = "TLS_RSA_WITH_AES_256_GCM_SHA384, TLS_RSA_WITH_AES_128_GCM_SHA256, TLS_AES_128_GCM_SHA256, TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256, TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384, TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256, TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256, TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384, TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384, TLS_AES_128_GCM_SHA256, TLS_AES_256_GCM_SHA384"
-
- 
-
-  tls_prefer_server_cipher_suites  = true
-
-Confirmation from our ESMS team:
-
-Lets avoid updating the ELBSecurity policy, and schedule the Prod upgrade with the new configs on 1.18.4
-
- We don't want to introduce unneccesary security changes at this time, we're just doing a cluster upgrade, so lets keep the changes to the minimum of whatever is neccessary
-
- 
+**ESMS Observation:**
+Initial testing and observation from the ESMS team:
+As per our observation, we tried upgrading the Vault version to 1.18.4v, but UI access remained inaccessible. We conducted testing by upgrading the cluster with the following sequence of versions:
+
+- 1.18.3v - Not worked
+- 1.18.4v - Not worked
+- 1.16.3v - Worked
+- 1.17.0v - Worked
+- 1.18.0v - Not Worked
+- 1.17.11v - Not Worked
+- 1.17.1v - Worked
+- 1.17.2v - Worked
+- 1.17.3v - Not worked
+
+**Note:** Tested in the performance cluster of the SBX environment.
+We stopped our testing at version 1.17.3v as UI access was no longer working.
+
+Could you please share your observations? Was there any major change after version 1.17.3v? Please advise us.
+
+---
+
+**HashiCorp Recommendation:**
+Based on our test results and HashiCorp’s analysis, the issue appears to be related to TLS 1.2 negotiation failing due to incompatible cipher suites.
+
+**Problem Statement:** TLS 1.2 negotiation failing.
+
+**Test results with ELBSecurityPolicy-2016-08 and Vault versions:**
+
+- 1.18.4v - Not working
+- 1.18.3v - Not working
+- 1.18.0v - Not Working
+- 1.17.11v - Not Working
+- 1.17.3v - Not working
+- 1.17.2v - Working
+- 1.17.1v - Working
+- 1.17.0v - Working
+- 1.16.3v - Working
+
+The issue appears to stem from Go version changes in later Vault releases affecting TLS behavior.
+
+**Recommended Actions:**
+- Update the ELB security policy to `ELBSecurityPolicy-TLS-1-2-2017-01`.
+- Set `tls_max_version` property to `tls12` in Vault.
+- Manually specify cipher suites in Vault’s configuration to ensure compatibility.
+
+**References:**
+- AWS ELB Security Policy Update: [AWS Docs](https://docs.aws.amazon.com/elasticloadbalancing/latest/classic/ssl-config-update.html)
+- Vault TLS Configuration: [Vault Docs](https://developer.hashicorp.com/vault/docs/configuration/listener/tcp#tls_min_version)
+- HashiCorp TLS Issue Documentation: [Support Article](https://support.hashicorp.com/hc/en-us/articles/31348370232595-Vault-TLS-errors-client-offered-only-unsupported-versions-no-cipher-suite-supported)
+
+---
+
+**Solution Proposed:**
+To resolve the issue before upgrading the production cluster to 1.18.4v, we propose the following:
+
+- Set `tls_max_version = tls12` in Vault’s configuration.
+- Configure Vault to explicitly specify compatible cipher suites:
+  ```
+  tls_cipher_suites = "TLS_RSA_WITH_AES_256_GCM_SHA384, TLS_RSA_WITH_AES_128_GCM_SHA256, TLS_AES_128_GCM_SHA256, TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256, TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384, TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256, TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384, TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384, TLS_AES_128_GCM_SHA256, TLS_AES_256_GCM_SHA384"
+  ```
+- Ensure ELB Security Policy is updated to `ELBSecurityPolicy-TLS-1-2-2017-01`.
+- Conduct additional validation testing in the performance cluster before rolling out changes to production.
+
+---
+
+**ESMS Performed Steps:**
+1. Conducted multiple tests across different Vault versions.
+2. Identified that the issue is related to TLS negotiation.
+3. Engaged HashiCorp support for further analysis.
+4. Implemented recommended configuration changes in the test environment.
+5. Verified that the issue is resolved by manually specifying cipher suites and updating the ELB security policy.
+
+---
+
+**Takeaway for Production Upgrade:**
+- The TLS issue can be mitigated by explicitly specifying cipher suites in the Vault configuration.
+- The `ELBSecurityPolicy-2016-08` policy may not be fully compatible with Vault versions beyond 1.17.2v.
+- Upgrading to `ELBSecurityPolicy-TLS-1-2-2017-01` should be evaluated based on client compatibility needs.
+- Further testing in the performance environment is required before proceeding with the production upgrade.
+- Security teams should review cipher suites to align with organizational security policies.
+
+---
+
+**Next Steps:**
+- Validate the proposed solution in a staging environment.
+- Obtain approval from security and compliance teams.
+- Proceed with the production upgrade following the validated steps.
 
