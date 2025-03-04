@@ -2,3 +2,8 @@ aws cloudtrail lookup-events \
     --lookup-attributes AttributeKey=ResourceName,AttributeValue=<your-kms-key-id> \
     --query 'Events[?EventName==`Decrypt` || EventName==`Encrypt` || EventName==`GenerateDataKey` || EventName==`ReEncrypt`]' \
     --max-results 50
+
+aws cloudtrail lookup-events \
+    --lookup-attributes AttributeKey=ResourceName,AttributeValue=<your-kms-key-id> \
+    --query 'Events[?EventName==`Decrypt` || EventName==`Encrypt` || EventName==`GenerateDataKey` || EventName==`ReEncrypt`].[EventTime, EventName, UserIdentity.ARN]' \
+    --max-results 5
