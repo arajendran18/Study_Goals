@@ -1,0 +1,12 @@
+Problem:
+Alice finds that root_kms.crt is referenced in Vault’s install script (install_vault.sh.tpl), but the file doesn’t exist in GitLab. The team needs to confirm if it’s actively used.
+
+Task:
+✅ Check if /opt/vault/tls/kms_root.crt is used in Vault config
+✅ Search GitLab UI for root_kms.crt references
+✅ Remove unused code if the cert is not required
+
+Acceptance Criteria:
+
+Root KMS cert is either removed or confirmed as required.
+Vault installation script is updated.
