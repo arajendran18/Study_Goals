@@ -1,0 +1,172 @@
+#!/usr/bin/env bash
+imds_token=$( curl -Ss -H "X-aws-ec2-metadata-token-ttl-seconds: 30" -XPUT 169.254.169.254/latest/api/token )
+instance_id=$( curl -Ss -H "X-aws-ec2-metadata-token: $imds_token" 169.254.169.254/latest/meta-data/instance-id )
+local_ipv4=$( curl -Ss -H "X-aws-ec2-metadata-token: $imds_token" 169.254.169.254/latest/meta-data/local-ipv4 )
+curl -fsSL https://apt.releases.hashicorp.com/gpg | apt-key add -
+apt-add-repository "deb [arch=amd64] https://apt.releases.hashicorp.com $(lsb_release -cs) main"
+apt-get update -y
+# retry install until Vault installs successfully
+install_rc=1
+while [[ $${install_rc} -ne 0 ]]; do
+  sleep 10
+  apt-get install -y vault-enterprise=${vault_version} awscli jq crudini
+  install_rc=$?
+done
+echo "Configuring system time"
+timedatectl set-timezone UTC
+crudini --set /etc/systemd/journald.conf Journal SystemMaxUse 2G
+restart systemd-journald
+chmod 0755 /opt/vault/tls
+aws s3 cp "${self_signed_cert_path}/kms_root.crt" /opt/vault/tls/kms_root.crt
+aws s3 cp "${self_signed_cert_path}/ssct" /tmp/ssct
+chmod 0755 /tmp/ssct
+/tmp/ssct -command=new-node \
+    -region=${region} \
+    -arn=${signing_key_arn} \
+    -ca=/opt/vault/tls/kms_root.crt \
+    -output_cert=/opt/vault/tls/node.crt \
+    -output_key=/opt/vault/tls/node.key \
+    -node_ip=$local_ipv4 \
+    -node_dns_name=$instance_id
+chown root:vault /opt/vault/tls/node.*
+chmod 0640 /opt/vault/tls/node.key
+chmod 0644 /opt/vault/tls/node.crt
+aws s3 cp --recursive --exclude "*" --include "root*" "${self_signed_cert_path}" /opt/vault/tls/
+cp /opt/vault/tls/rootCA.pem /usr/local/share/ca-certificates/rootCA.crt
+update-ca-certificates
+openssl genrsa -out /opt/vault/tls/vault-key.pem 2048
+chown root:vault /opt/vault/tls/vault-key.pem
+chmod 0640 /opt/vault/tls/vault-key.pem
+cat << EOF > /opt/vault/tls/vault-csr-config.conf
+[req]
+distinguished_name = req_distinguished_name
+req_extensions = v3_req
+prompt = no
+[req_distinguished_name]
+C = CA
+ST = British Columbia
+L = Vancouver
+O = Luluemon Athletica Canada, Inc.
+CN = vault-node
+[v3_req]
+keyUsage = keyEncipherment, dataEncipherment
+extendedKeyUsage = serverAuth
+subjectAltName = @alt_names
+[alt_names]
+DNS.1 = ${cluster_address}
+DNS.2 = $instance_id
+DNS.3 = vault-node
+DNS.4 = localhost
+IP.1 = $local_ipv4
+IP.2 = 127.0.0.1
+EOF
+openssl req -new \
+  -sha256 \
+  -subj "/C=CA/ST=British Columbia/L=Vancouver/O=Lululemon Athletica Canada, Inc./CN=vault-node" \
+  -key /opt/vault/tls/vault-key.pem \
+  -out /opt/vault/tls/vault-cert.csr
+openssl x509 -req -days 3650 -in /opt/vault/tls/vault-cert.csr -CA /opt/vault/tls/rootCA.pem -CAkey /opt/vault/tls/rootCA.key -CAcreateserial -out /opt/vault/tls/vault-cert.pem -extfile /opt/vault/tls/vault-csr-config.conf -extensions v3_req
+openssl x509 -in /opt/vault/tls/vault-cert.pem -text -noout
+# copy Vault license file from S3 bucket
+aws s3 cp "${license_path}" /opt/vault/vault.hclic
+# license should be readable by the vault group only
+chown root:vault /opt/vault/vault.hclic
+chmod 0640 /opt/vault/vault.hclic
+########################################
+cat << EOF > /etc/vault.d/vault.hcl
+plugin_directory = "/etc/vault/plugins"
+disable_performance_standby = false
+ui = true
+disable_mlock = true
+storage "raft" {
+  path    = "/opt/vault/data"
+  node_id = "$instance_id"
+  retry_join {
+    auto_join = "provider=aws region=${region} tag_key=${name}-role tag_value=server"
+    auto_join_scheme = "https"
+    leader_tls_servername = "vault-node"
+    leader_ca_cert_file = "/opt/vault/tls/rootCA.pem"
+    leader_client_cert_file = "/opt/vault/tls/vault-cert.pem"
+    leader_client_key_file = "/opt/vault/tls/vault-key.pem"
+  }
+}
+cluster_addr = "https://$local_ipv4:8201"
+api_addr = "https://${cluster_address}:8200"
+listener "tcp" {
+  address                          = "0.0.0.0:8200"
+  x_forwarded_for_authorized_addrs = ["${vpc_cidr}"]
+  tls_disable                      = false
+  tls_cert_file                    = "/opt/vault/tls/vault-cert.pem"
+  tls_key_file                     = "/opt/vault/tls/vault-key.pem"
+  tls_client_ca_file               = "/opt/vault/tls/rootCA.pem"
+  tls_max_version                  = "tls12"
+  tls_cipher_suites                = "TLS_RSA_WITH_AES_256_GCM_SHA384, TLS_RSA_WITH_AES_128_GCM_SHA256, TLS_AES_128_GCM_SHA256, TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256, TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384, TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256, TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256, TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384, TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384, TLS_AES_128_GCM_SHA256, TLS_AES_256_GCM_SHA384"
+  tls_prefer_server_cipher_suites  = true 
+}
+seal "awskms" {
+  region     = "${region}"
+  kms_key_id = "${kms_key_arn}"
+}
+cluster_name = "${name}-vault"
+telemetry {
+  dogstatsd_addr = "localhost:8125"
+  enable_hostname_label = true
+  prometheus_retention_time = "30s"
+}
+reporting {
+    license {
+        enabled = false
+   }
+}
+license_path = "/opt/vault/vault.hclic"
+EOF
+chown root:root /etc/vault.d
+chown root:vault /etc/vault.d/vault.hcl
+chmod 640 /etc/vault.d/vault.hcl
+mkdir -p /var/log/vault
+chown vault:vault /var/log/vault
+crudini --set /usr/lib/systemd/system/vault.service Service LogsDirectory /var/log/vault
+crudini --set /usr/lib/systemd/system/vault.service Service StandardOutput file:/var/log/vault/messages.log
+crudini --set /usr/lib/systemd/system/vault.service Service StandardError file:/var/log/vault/debug.log
+systemctl daemon-reload
+systemctl enable vault
+systemctl start vault
+cat <<EOF | sudo tee /etc/profile.d/vault.sh
+export VAULT_CACERT=/opt/vault/tls/rootCA.pem
+EOF
+echo export VAULT_CACERT=/opt/vault/tls/rootCA.pem >> /root/.profile
+# Setup to rotate logs hourly
+# Create separate directory to store hourly logrotate configuration files.
+mkdir /etc/logrotate.hourly.d
+# Create main logrotate configuration file that will read configuration files from designated directory.
+cat << EOF | sudo tee /etc/logrotate.hourly.conf
+# packages drop hourly log rotation information into this directory
+include /etc/logrotate.hourly.d
+EOF
+# Assign permissions
+chmod 644 /etc/logrotate.hourly.conf
+# Create cron config to execute logrotate every hour and read main hourly config file
+cat << EOF | sudo tee /etc/cron.hourly/logrotate
+#!/bin/bash
+test -x /usr/sbin/logrotate || exit 0
+/usr/sbin/logrotate /etc/logrotate.hourly.conf
+EOF
+# Assign permissions
+chmod 775 /etc/cron.hourly/logrotate
+# Create config file to hourly rotate specific log file inside above-mentioned directory
+cat <<EOF | sudo tee /etc/logrotate.hourly.d/vault
+/var/log/vault/*.log {
+    missingok
+    ifempty
+    dateext
+    dateformat -%Y%m%d%H
+    rotate 5
+    size 200K
+    maxsize 200K
+    create 0664 vault bin
+    postrotate
+      /usr/bin/systemctl reload vault 2> /dev/null || true
+    endscript
+}
+EOF
+systemctl restart logrotate
