@@ -1,0 +1,45 @@
+**Title: Removal of Unused TLS Certificate Configuration in Vault**
+
+**Background:**  
+During a routine audit of Vault configuration and automation scripts, we identified a section of the script related to `kms_root.crt` that appeared to be unused. Our objective was to determine whether this stanza could be safely removed without impacting Vault operations.
+
+**Analysis Process:**  
+1. **Vault Configuration Review:**  
+   - Checked all Vault configuration files.
+   - Did not find any reference to `kms_root.crt`.
+
+2. **Service Utilization Check:**  
+   - Verified whether Vault services referenced `kms_root.crt`.
+   - Confirmed that it was not utilized by Vault processes.
+
+3. **Script & Automation Review:**  
+   - Conducted a search across all relevant automation scripts.
+   - Found no references to `kms_root.crt` in any scripts or processes.
+
+**Removed Stanza:**  
+The following lines were removed from the script as they were determined to be unnecessary:
+
+```
+aws s3 cp "${self_signed_cert_path}/kms_root.crt" /opt/vault/tls/kms_root.crt
+aws s3 cp "${self_signed_cert_path}/ssct" /tmp/ssct
+chmod 0755 /tmp/ssct
+/tmp/ssct -command=new-node \
+    -region=${region} \
+    -arn=${signing_key_arn} \
+    -ca=/opt/vault/tls/kms_root.crt \
+    -output_cert=/opt/vault/tls/node.crt \
+    -output_key=/opt/vault/tls/node.key \
+    -node_ip=$local_ipv4 \
+    -node_dns_name=$instance_id
+chown root:vault /opt/vault/tls/node.*
+chmod 0640 /opt/vault/tls/node.key
+chmod 0644 /opt/vault/tls/node.crt
+```
+
+**Conclusion:**  
+Since `kms_root.crt` was neither referenced in Vault configuration nor used by any Vault services or automation scripts, it was deemed **safe to remove**. This change helps in reducing unnecessary file transfers and ensures the script remains clean and optimized.
+
+**Action Taken:**  
+- The unused stanza has been removed from the script.
+- Post-removal verification confirmed no impact on Vault functionality.
+
