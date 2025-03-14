@@ -1,0 +1,54 @@
+##Attached IAM Role
+resource "aws_iam_role" "instance_role" {
+  name_prefix        = "${local.solution_name}-role"
+  assume_role_policy = data.aws_iam_policy_document.instance_role.json
+}
+
+data "aws_iam_policy_document" "instance_role" {
+  statement {
+    effect = "Allow"
+    actions = [
+      "sts:AssumeRole",
+    ]
+
+    principals {
+      type        = "Service"
+      identifiers = ["ec2.amazonaws.com", "lambda.amazonaws.com"]
+    }
+  }
+}
+
+##Lambda tf file
+resource "aws_lambda_function" "client_reporting" {
+  function_name = "${local.solution_name}-client-reporting"
+  tags          = { Name = "${local.solution_name}-client-reporting" }
+  role          = aws_iam_role.instance_role.arn
+  runtime       = "python3.9"
+  handler       = "client_reporting.lambda_handler"
+  s3_bucket     = module.primary.lambda_code_bucket
+  s3_key        = "lambda/client_reporting.zip"
+  timeout       = 10
+
+  vpc_config {
+    security_group_ids = [
+      module.primary.aws_vault_security_group_id,
+      module.primary.aws_elb_security_group_443,
+    ]
+    subnet_ids         = local.private_subnet_ids[local.solution_prefix]
+  }
+
+  environment {
+    variables = {
+      VAULT_ADDR         = "https://${local.solution_prefix}-esms.lllint.com"
+      VAULT_AWS_ROLE     = var.client_reporting_vault_aws_role
+      REPORTING_INTERVAL = var.client_reporting_interval
+      DESTINATION_BUCKET = aws_s3_bucket.vault_config_bucket.bucket
+    }
+  }
+
+  layers = [
+    "arn:aws:lambda:${module.primary.aws_region}:${data.aws_caller_identity.current.account_id}:layer:hvac:1",
+    "arn:aws:lambda:${module.primary.aws_region}:${data.aws_caller_identity.current.account_id}:layer:requests:1"
+  ]
+}
+
