@@ -1,0 +1,211 @@
+##Vulnrability management policy##
+vulnerability_management_policy:
+  - name: lululemon Vulnerability Management Policy
+    description: >-
+      This is the vulnerability management policy for the lululemon Gitlab
+      organization to aid in auto-resolving vulnerabilities no longer found on
+      the default branch. 
+    enabled: true
+    rules:
+      - type: no_longer_detected
+        scanners: []
+        severity_levels: []
+    actions:
+      - type: auto_resolve
+    policy_scope:
+      projects:
+        excluding: []
+
+-------------------------------------------------------------------------------
+## Secret policy##
+approval_policy:
+  - name: SECRET POLICY
+    description: >-
+      This policy will block if one or both of the following criteria are met.
+
+
+      A merge request to any protected branch does not contain a pipeline that
+      ran the secret detection job. 
+
+      - OR -
+
+      ANY new critical secret vulnerabilities with the status of 'needs triage'
+      are found within the latest pipeline associated with a merge request to
+      any protected branch.
+    enabled: true
+    actions:
+      - type: require_approval
+        approvals_required: 1
+        user_approvers_ids:
+          - 8633806
+          - 11168261
+          - 11223317
+          - 11960326
+          - 18306956
+    rules:
+      - type: scan_finding
+        scanners:
+          - secret_detection
+        vulnerabilities_allowed: 0
+        severity_levels:
+          - critical
+        vulnerability_states:
+          - new_needs_triage
+        branch_type: protected
+      - type: scan_finding
+        scanners:
+          - secret_detection
+        vulnerabilities_allowed: 0
+        severity_levels:
+          - critical
+        vulnerability_states:
+          - new_needs_triage
+        branch_type: default
+    approval_settings:
+      block_branch_modification: false
+      prevent_pushing_and_force_pushing: false
+      prevent_approval_by_author: false
+      prevent_approval_by_commit_author: false
+      remove_approvals_with_new_commit: false
+      require_password_to_approve: false
+    policy_scope:
+      compliance_frameworks:
+        - id: 1016749
+        - id: 1017692
+        - id: 1017691
+        - id: 1019721
+
+-------------------------------------------------------------------------------------------------
+##SAST Policy###
+approval_policy:
+  - name: SAST POLICY - PASSIVE
+    description: 'This policy is to block NEW CRITICAL SAST findings '
+    enabled: true
+    actions:
+      - type: require_approval
+        approvals_required: 1
+        user_approvers_ids:
+          - 8633806
+          - 11168261
+          - 11223317
+          - 11960326
+          - 18306956
+      - type: send_bot_message
+        enabled: true
+    rules:
+      - type: scan_finding
+        scanners:
+          - sast
+        vulnerabilities_allowed: 10000
+        severity_levels:
+          - critical
+        vulnerability_states:
+          - new_needs_triage
+          - new_dismissed
+          - detected
+          - confirmed
+        branch_type: default
+      - type: scan_finding
+        scanners:
+          - sast
+        vulnerabilities_allowed: 10000
+        severity_levels:
+          - critical
+        vulnerability_states:
+          - new_needs_triage
+          - confirmed
+          - detected
+        branch_type: protected
+    approval_settings:
+      block_branch_modification: false
+      block_group_branch_modification: false
+      prevent_pushing_and_force_pushing: false
+      prevent_approval_by_author: false
+      prevent_approval_by_commit_author: false
+      remove_approvals_with_new_commit: false
+      require_password_to_approve: false
+    policy_scope:
+      compliance_frameworks:
+        - id: 1020222
+        - id: 1020223
+        - id: 1020226
+        - id: 1019721
+        - id: 1019722
+        - id: 1019971
+        - id: 1016749
+        - id: 1017691
+        - id: 1017692
+    fallback_behavior:
+      fail: closed
+----------------------------------------------------------------------------------
+Legacy Secret policy - passive
+approval_policy:
+  - name: 'LEGACY SECRET POLICY - PASSIVE '
+    description: >-
+      This policy will block if one or both of the following criteria are met.
+
+
+      A merge request to any protected branch does not contain a pipeline that
+      ran the secret detection job. 
+
+      - OR -
+
+      More than 10,000 critical secret vulnerabilities with the status of 'needs
+      triage' or 'confirmed' are found within the latest pipeline associated
+      with a merge request to any protected branch.
+    enabled: true
+    actions:
+      - type: require_approval
+        approvals_required: 1
+        user_approvers_ids:
+          - 8633806
+          - 11168261
+          - 11223317
+          - 11960326
+          - 18306956
+      - type: send_bot_message
+        enabled: true
+    rules:
+      - type: scan_finding
+        scanners:
+          - secret_detection
+        vulnerabilities_allowed: 10000
+        severity_levels:
+          - critical
+        vulnerability_states:
+          - detected
+          - confirmed
+        branch_type: protected
+      - type: scan_finding
+        scanners:
+          - secret_detection
+        vulnerabilities_allowed: 10000
+        severity_levels:
+          - critical
+        vulnerability_states:
+          - confirmed
+          - detected
+        branch_type: default
+    approval_settings:
+      block_branch_modification: false
+      block_group_branch_modification: false
+      prevent_pushing_and_force_pushing: false
+      prevent_approval_by_author: false
+      prevent_approval_by_commit_author: false
+      remove_approvals_with_new_commit: false
+      require_password_to_approve: false
+    policy_scope:
+      compliance_frameworks:
+        - id: 1020222
+        - id: 1020223
+        - id: 1020226
+        - id: 1019721
+        - id: 1019722
+        - id: 1019971
+        - id: 1019645
+        - id: 1016749
+        - id: 1017691
+        - id: 1017692
+    fallback_behavior:
+      fail: closed
+-----------------------------------------------------------------------------------------------------
