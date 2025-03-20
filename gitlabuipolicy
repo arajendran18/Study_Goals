@@ -209,3 +209,30 @@ approval_policy:
     fallback_behavior:
       fail: closed
 -----------------------------------------------------------------------------------------------------
+## CICD policy
+
+stages:
+  - Terraform_format
+  - lint
+  - test
+validate:
+  stage: Terraform_format
+  image:
+    name: hashicorp/terraform:0.15.5
+    entrypoint:
+      - "/usr/bin/env"
+      - "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+  script:
+    - terraform init -backend=false
+    - terraform validate
+    - terraform fmt -recursive
+    - terraform fmt -recursive -list=true -write=false -diff=true -check=true
+      
+tflint:
+  stage: lint
+  image:
+    name: wata727/tflint
+    entrypoint: ["/bin/sh", "-c"]
+  script:
+    - tflint .
+  allow_failure: true
