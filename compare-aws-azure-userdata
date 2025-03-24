@@ -1,0 +1,744 @@
+###AWS##
+
+#!/usr/bin/env bash
+imds_token=$( curl -Ss -H "X-aws-ec2-metadata-token-ttl-seconds: 30" -XPUT 169.254.169.254/latest/api/token )
+instance_id=$( curl -Ss -H "X-aws-ec2-metadata-token: $imds_token" 169.254.169.254/latest/meta-data/instance-id )
+local_ipv4=$( curl -Ss -H "X-aws-ec2-metadata-token: $imds_token" 169.254.169.254/latest/meta-data/local-ipv4 )
+curl -fsSL https://apt.releases.hashicorp.com/gpg | apt-key add -
+apt-add-repository "deb [arch=amd64] https://apt.releases.hashicorp.com $(lsb_release -cs) main"
+apt-get update -y
+install_rc=1
+while [[ $${install_rc} -ne 0 ]]; do
+  sleep 10 # waiting for lock to release from 'apt-get update -y' command
+  apt-get install -y vault-enterprise=${vault_version} awscli jq crudini
+  install_rc=$?
+done
+echo "Configuring system time"
+timedatectl set-timezone UTC
+crudini --set /etc/systemd/journald.conf Journal SystemMaxUse 2G
+restart systemd-journald
+chmod 0755 /opt/vault/tls
+aws s3 cp "${self_signed_cert_path}/rootCA.key" /opt/vault/tls/
+aws s3 cp "${self_signed_cert_path}/rootCA.pem" /opt/vault/tls/
+cp /opt/vault/tls/rootCA.pem /usr/local/share/ca-certificates/rootCA.crt
+update-ca-certificates
+openssl genrsa -out /opt/vault/tls/vault-key.pem 2048
+cat << EOF > /opt/vault/tls/vault-csr-config.conf
+[req]
+distinguished_name = req_distinguished_name
+req_extensions = v3_req
+prompt = no
+[req_distinguished_name]
+C = CA
+ST = British Columbia
+L = Vancouver
+O = Luluemon Athletica Canada, Inc.
+CN = vault-node
+[v3_req]
+keyUsage = keyEncipherment, dataEncipherment
+extendedKeyUsage = serverAuth
+subjectAltName = @alt_names
+[alt_names]
+DNS.1 = ${cluster_address}
+DNS.2 = ${external_address}
+DNS.3 = $instance_id
+DNS.4 = vault-node
+DNS.5 = localhost
+IP.1 = $local_ipv4
+IP.2 = 127.0.0.1
+EOF
+openssl req -new \
+  -sha256 \
+  -subj "/C=CA/ST=British Columbia/L=Vancouver/O=Lululemon Athletica Canada, Inc./CN=vault-node" \
+  -key /opt/vault/tls/vault-key.pem \
+  -out /opt/vault/tls/vault-cert.csr
+openssl x509 -req -days 3650 -in /opt/vault/tls/vault-cert.csr -CA /opt/vault/tls/rootCA.pem -CAkey /opt/vault/tls/rootCA.key -CAcreateserial -out /opt/vault/tls/vault-cert.pem -extfile /opt/vault/tls/vault-csr-config.conf -extensions v3_req
+openssl x509 -in /opt/vault/tls/vault-cert.pem -text -noout
+vault-key.pem should be readable by the vault group only
+touch /opt/vault/tls/vault-key.pem
+chown root:vault /opt/vault/tls/vault-key.pem
+chmod 0640 /opt/vault/tls/vault-key.pem
+aws s3 cp "${license_path}" /opt/vault/vault.hclic
+chown root:vault /opt/vault/vault.hclic
+chmod 0640 /opt/vault/vault.hclic
+install_agent=1
+while [[ $${install_agent} -ne 0 ]]; do
+  sleep 10
+  apt-get update
+  curl -s https://repos.influxdata.com/influxdata-archive_compat.key > influxdata-archive_compat.key
+  echo '393e8779c89ac8d958f81f942f9ad7fb82a25e133faddaf92e15b16e6ac9ce4c influxdata-archive_compat.key' | sha256sum -c && cat influxdata-archive_compat.key | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/influxdata-archive_compat.gpg > /dev/null
+  echo 'deb [signed-by=/etc/apt/trusted.gpg.d/influxdata-archive_compat.gpg] https://repos.influxdata.com/debian stable main' | sudo tee /etc/apt/sources.list.d/influxdata.list
+  apt-get install telegraf
+  install_agent=$?
+done
+cat << EOF > /etc/telegraf/telegraf.conf
+[global_tags]
+  index="vault-metrics"
+  datacenter = "${region}"
+  role       = "vault-server"
+  cluster    = "${name}-vault"
+[agent]
+  interval = "10s"
+  round_interval = true
+  metric_batch_size = 1000
+  metric_buffer_limit = 10000
+  collection_jitter = "0s"
+  flush_interval = "10s"
+  flush_jitter = "0s"
+  precision = ""
+  hostname = ""
+  omit_hostname = false
+[[inputs.statsd]]
+  protocol = "udp"
+  service_address = ":8125"
+  metric_separator = "."
+  datadog_extensions = true
+[[outputs.http]]
+  url = "https://http-inputs-lululemon.splunkcloud.com:443/services/collector"
+  data_format="splunkmetric"
+  splunkmetric_hec_routing=true
+  [outputs.http.headers]
+    Content-Type = "application/json"
+    Authorization = "Splunk $(aws secretsmanager get-secret-value --secret-id splunk_hec_token | jq --raw-output '.SecretString' | jq -r .splunk_hec_token)"
+[[inputs.cpu]]
+  percpu = true
+  totalcpu = true
+  collect_cpu_time = false
+  report_active = false
+[[inputs.mem]]
+[[inputs.swap]]
+[[inputs.disk]]
+  ignore_fs = ["tmpfs", "devtmpfs", "devfs", "iso9660", "overlay", "aufs", "squashfs"]
+[[inputs.diskio]]
+[[inputs.kernel]]
+[[inputs.linux_sysctl_fs]]
+[[inputs.net]]
+[[inputs.netstat]]
+[[inputs.processes]]
+[[inputs.procstat]]
+ pattern = "(vault)"
+[[inputs.system]]
+EOF
+mkdir -p /etc/vault/plugins;
+wget -P /etc/vault/plugins "https://releases.hashicorp.com/vault-plugin-database-oracle/0.10.2/vault-plugin-database-oracle_0.10.2_linux_amd64.zip";
+wget -P /etc/vault/plugins "https://releases.hashicorp.com/vault-plugin-database-oracle/0.9.0/vault-plugin-database-oracle_0.9.0_linux_amd64.zip";
+unzip /etc/vault/plugins/vault-plugin-database-oracle_0.9.0_linux_amd64.zip -d /etc/vault/plugins/vault-plugin-database-oracle-0.9.0;
+unzip /etc/vault/plugins/vault-plugin-database-oracle_0.10.2_linux_amd64.zip -d /etc/vault/plugins/vault-plugin-database-oracle-0.10.2;
+mv /etc/vault/plugins/vault-plugin-database-oracle-0.10.2/vault-plugin-database-oracle /etc/vault/plugins/vault-plugin-database-oracle-0-10-2;
+mv /etc/vault/plugins/vault-plugin-database-oracle-0.9.0/vault-plugin-database-oracle /etc/vault/plugins/vault-plugin-database-oracle-0-9-0;
+rm -rf /etc/vault/plugins/vault-plugin-database-oracle-0.10.2;
+rm -rf /etc/vault/plugins/vault-plugin-database-oracle-0.9.0;
+chown -R vault:vault /etc/vault/*;
+chown -R vault:vault /etc/vault/plugins/*;
+chmod 777 /etc/vault/plugins/*;
+mkdir /opt/oracle;
+wget -P /opt/oracle "https://download.oracle.com/otn_software/linux/instantclient/1922000/instantclient-basic-linux.x64-19.22.0.0.0dbru.zip";
+unzip /opt/oracle/instantclient-basic-linux.x64-19.22.0.0.0dbru.zip -d /opt/oracle;
+wget -P /opt/oracle "https://yum.oracle.com/repo/OracleLinux/OL8/oracle/instantclient/x86_64/getPackage/oracle-instantclient19.23-basic-19.23.0.0.0-1.x86_64.rpm";
+apt-get install -y rpm2cpio;
+cd /opt/oracle;
+rpm2cpio oracle-instantclient19.23-basic-19.23.0.0.0-1.x86_64.rpm  | cpio -idmv;
+mkdir -p /opt/oracle/instantclient_19_23;
+cp -R ./usr/lib/oracle/19.23/client64/lib/*   instantclient_19_23;
+apt-get install libaio1;
+sh -c "echo /opt/oracle/instantclient_19_23 > /etc/ld.so.conf.d/oracle-instantclient.conf";
+ldconfig;
+export LD_LIBRARY_PATH=/opt/oracle/instantclient_19_23:$LD_LIBRARY_PATH
+################################### Install Splunk #####################################
+wget -O splunkforwarder-9.0.5-e9494146ae5c-Linux-x86_64.tgz "https://download.splunk.com/products/universalforwarder/releases/9.0.5/linux/splunkforwarder-9.0.5-e9494146ae5c-Linux-x86_64.tgz"
+tar -xvzf splunkforwarder-9.0.5-e9494146ae5c-Linux-x86_64.tgz -C /opt
+useradd -m splunk
+groupadd splunk
+/opt/splunkforwarder/bin/splunk start --accept-license --answer-yes --no-prompt --seed-passwd $(aws secretsmanager get-secret-value --secret-id splunk_admin_password | jq --raw-output '.SecretString' | jq -r .splunk_admin_password)
+aws s3 cp s3://splunk-npd-certs/splunkclouduf.spl /opt/
+/opt/splunkforwarder/bin/splunk install app /opt/splunkclouduf.spl -auth admin:$(aws secretsmanager get-secret-value --secret-id splunk_admin_password | jq --raw-output '.SecretString' | jq -r .splunk_admin_password)
+mkdir -p /opt/splunkforwarder/etc/apps/lll_vault/default
+/opt/splunkforwarder/bin/splunk stop
+sudo /opt/splunkforwarder/bin/splunk enable boot-start -user splunk 
+touch /opt/splunkforwarder/etc/apps/lll_vault/default/inputs.conf
+cat << EOF > /opt/splunkforwarder/etc/apps/lll_vault/default/inputs.conf
+[default]
+host = cloud-infra-vault-${name}-$instance_id
+[monitor:///var/log/vault/audit_to_splunk.log*]
+index=vault-audit
+sourcetype=hashicorp:vault:audit:log
+EOF
+# Cribl Stream Audit log 
+mkdir -p /opt/splunkforwarder/etc/apps/000_criblstream/local
+touch /opt/splunkforwarder/etc/apps/000_criblstream/local/inputs.conf
+touch /opt/splunkforwarder/etc/apps/000_criblstream/local/outputs.conf
+cat << EOF > /opt/splunkforwarder/etc/apps/000_criblstream/local/inputs.conf
+[monitor:///var/log/vault/audit_to_splunk.log]
+disabled = false
+EOF
+cat << EOF > /opt/splunkforwarder/etc/apps/000_criblstream/local/outputs.conf
+[httpout]
+httpEventCollectorToken = $(aws secretsmanager get-secret-value --secret-id cribl_token_npd | jq -r .SecretString | jq -r .cribl_token_npd)
+uri = https://abn-logwrk02.lllext.com:9997
+EOF
+chown -R splunk:splunk /opt/splunkforwarder/etc/apps/
+systemctl start SplunkForwarder.service
+#####################################################################################
+systemctl start telegraf
+cat << EOF > /etc/vault.d/vault.hcl
+plugin_directory = "/etc/vault/plugins"
+disable_performance_standby = false
+ui = true
+disable_mlock = true
+storage "raft" {
+  path    = "/opt/vault/data"
+  node_id = "$instance_id"
+  retry_join {
+    auto_join = "provider=aws region=${region} tag_key=${name}-role tag_value=server"
+    auto_join_scheme = "https"
+    leader_tls_servername = "vault-node"
+    leader_ca_cert_file = "/opt/vault/tls/rootCA.pem"
+    leader_client_cert_file = "/opt/vault/tls/vault-cert.pem"
+    leader_client_key_file = "/opt/vault/tls/vault-key.pem"
+  }
+}
+cluster_addr = "https://$local_ipv4:8201"
+api_addr = "https://${cluster_address}:8200"
+listener "tcp" {
+  address                          = "0.0.0.0:8200"
+  x_forwarded_for_authorized_addrs = ["${vpc_cidr}"]
+  tls_disable                      = false
+  tls_cert_file                    = "/opt/vault/tls/vault-cert.pem"
+  tls_key_file                     = "/opt/vault/tls/vault-key.pem"
+  tls_client_ca_file               = "/opt/vault/tls/rootCA.pem"
+  tls_max_version                  = "tls12"
+  tls_cipher_suites                = "TLS_RSA_WITH_AES_256_GCM_SHA384, TLS_RSA_WITH_AES_128_GCM_SHA256, TLS_AES_128_GCM_SHA256, TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256, TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384, TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256, TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256, TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384, TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384, TLS_AES_128_GCM_SHA256, TLS_AES_256_GCM_SHA384"
+  tls_prefer_server_cipher_suites  = true
+}
+seal "awskms" {
+  region     = "${region}"
+  kms_key_id = "${kms_key_arn}"
+}
+cluster_name = "${name}-vault"
+telemetry {
+  dogstatsd_addr = "localhost:8125"
+  enable_hostname_label = true
+  prometheus_retention_time = "30s"
+  disable_hostname = true
+}
+reporting {
+    license {
+        enabled = false
+   }
+}
+license_path = "/opt/vault/vault.hclic"
+EOF
+chown root:root /etc/vault.d
+chown root:vault /etc/vault.d/vault.hcl
+chmod 640 /etc/vault.d/vault.hcl
+mkdir -p /var/log/vault
+chown vault:vault /var/log/vault
+crudini --set /usr/lib/systemd/system/vault.service Service LogsDirectory /var/log/vault
+crudini --set /usr/lib/systemd/system/vault.service Service StandardOutput file:/var/log/vault/messages.log
+crudini --set /usr/lib/systemd/system/vault.service Service StandardError file:/var/log/vault/debug.log
+systemctl daemon-reload
+systemctl enable vault
+systemctl start vault
+systemctl restart telegraf
+echo "Setup Vault profile"
+cat <<EOF | sudo tee /etc/profile.d/vault.sh
+export VAULT_CACERT=/opt/vault/tls/rootCA.pem
+EOF
+echo export VAULT_CACERT=/opt/vault/tls/rootCA.pem >> /root/.profile
+mkdir /etc/logrotate.hourly.d
+cat << EOF | sudo tee /etc/logrotate.hourly.conf
+include /etc/logrotate.hourly.d
+EOF
+chmod 644 /etc/logrotate.hourly.conf
+cat << EOF | sudo tee /etc/cron.hourly/logrotate
+#!/bin/bash
+test -x /usr/sbin/logrotate || exit 0
+/usr/sbin/logrotate /etc/logrotate.hourly.conf
+EOF
+chmod 775 /etc/cron.hourly/logrotate
+cat <<EOF | sudo tee /etc/logrotate.hourly.d/vault
+/var/log/vault/*.log {
+    missingok
+    ifempty
+    dateext
+    dateformat -%Y%m%d%H
+    rotate 5
+    size 200K
+    maxsize 200K
+    create 0664 vault bin
+    postrotate
+      /usr/bin/systemctl reload vault 2> /dev/null || true
+    endscript
+}
+EOF
+systemctl restart logrotate
+curl https://amazoncloudwatch-agent.s3.amazonaws.com/debian/amd64/latest/amazon-cloudwatch-agent.deb -o /tmp/amazon-cloudwatch-agent.deb
+dpkg -i -E /tmp/amazon-cloudwatch-agent.deb
+cat <<EOF > /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.d/config.json
+{
+        "agent": {
+                "metrics_collection_interval": 60,
+                "run_as_user": "root"
+        },
+        "logs": {
+                "logs_collected": {
+                        "files": {
+                                "collect_list": [
+                                        {
+                                                "file_path": "/var/log/syslog",
+                                                "log_group_name": "${syslog_lg_name}",
+                                                "log_stream_name": "{instance_id}"
+                                        },
+                                        {
+                                                "file_path": "/var/log/vault/messages.log",
+                                                "log_group_name": "${messages_lg_name}",
+                                                "log_stream_name": "{instance_id}"
+                                        },
+                                        {
+                                                "file_path": "/var/log/vault/debug.log",
+                                                "log_group_name": "${debug_lg_name}",
+                                                "log_stream_name": "{instance_id}"
+                                        },
+                                        {
+                                                "file_path": "/var/log/vault/audit.log",
+                                                "log_group_name": "${audit_lg_name}",
+                                                "log_stream_name": "{instance_id}"
+                                        }
+                                ]
+                        }
+                }
+        },
+        "metrics": {
+                "append_dimensions": {
+                        "InstanceId": "\$${aws:InstanceId}"
+                },
+                "metrics_collected": {
+                        "cpu": {
+                                "measurement": [
+                                        "cpu_usage_idle",
+                                        "cpu_usage_iowait",
+                                        "cpu_usage_user",
+                                        "cpu_usage_system"
+                                ],
+                                "metrics_collection_interval": 60,
+                                "totalcpu": true,
+                                "resources": [
+                                        "*"
+                                ]
+                        },
+                        "disk": {
+                                "measurement": [
+                                        "used_percent",
+                                        "used",
+                                        "free",
+                                        "inodes_free"
+                                ],
+                                "metrics_collection_interval": 60,
+                                "resources": [
+                                        "/"
+                                ]
+                        },
+                        "diskio": {
+                                "measurement": [
+                                        "io_time"
+                                ],
+                                "metrics_collection_interval": 60,
+                                "resources": [
+                                        "/"
+                                ]
+                        },
+                        "mem": {
+                                "measurement": [
+                                        "mem_used_percent"
+                                ],
+                                "metrics_collection_interval": 60
+                        },
+                        "swap": {
+                                "measurement": [
+                                        "swap_used_percent"
+                                ],
+                                "metrics_collection_interval": 60
+                        }
+                }
+        }
+}
+EOF
+/opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -s -c file://opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.d/config.
+
+
+##Azure##
+
+#!/usr/bin/env bash
+
+# install package
+curl -fsSL https://apt.releases.hashicorp.com/gpg | apt-key add -
+apt-add-repository "deb [arch=amd64] https://apt.releases.hashicorp.com $(lsb_release -cs) main"
+apt-get update -y
+
+# retry install until Vault installs successfully
+install_rc=1
+while [[ $${install_rc} -ne 0 ]]; do
+  sleep 10 # waiting for lock to release from 'apt-get update -y' command
+  apt-get install -y vault-enterprise=${vault_version} jq crudini net-tools ca-certificates curl apt-transport-https lsb-release gnupg
+  install_rc=$?
+done
+
+# Pin version of Vault
+apt-mark hold vault-enterprise
+
+# Install Azure CLI
+sudo mkdir -p /etc/apt/keyrings
+curl -sLS https://packages.microsoft.com/keys/microsoft.asc |
+    gpg --dearmor |
+    sudo tee /etc/apt/keyrings/microsoft.gpg > /dev/null
+sudo chmod go+r /etc/apt/keyrings/microsoft.gpg
+
+AZ_DIST=$(lsb_release -cs)
+echo "deb [arch=`dpkg --print-architecture` signed-by=/etc/apt/keyrings/microsoft.gpg] https://packages.microsoft.com/repos/azure-cli/ $AZ_DIST main" |
+    sudo tee /etc/apt/sources.list.d/azure-cli.list
+
+apt-get install -y azure-cli
+
+# parameters for CSR
+vm_name=$(hostname)
+local_ipv4=$(ifconfig | grep "inet " | grep -v 127.0.0.1 | cut -d' ' -f10)
+
+echo "Configuring system time"
+timedatectl set-timezone UTC
+
+crudini --set /etc/systemd/journald.conf Journal SystemMaxUse 2G
+systemctl restart systemd-journald
+
+# /opt/vault/tls should be readable by all users of the system
+chmod 0755 /opt/vault/tls
+
+az storage blob download --account-key ${account_key} --account-name ${account_name} --container-name ${cert_container_name} --file /opt/vault/tls/rootCA.key --name rootCA.key
+az storage blob download --account-key ${account_key} --account-name ${account_name} --container-name ${cert_container_name} --file /opt/vault/tls/rootCA.pem --name rootCA.pem
+
+cp /opt/vault/tls/rootCA.pem /usr/local/share/ca-certificates/rootCA.crt
+update-ca-certificates
+
+openssl genrsa -out /opt/vault/tls/vault-key.pem 2048
+
+cat << EOF > /opt/vault/tls/vault-csr-config.conf
+[req]
+distinguished_name = req_distinguished_name
+req_extensions = v3_req
+prompt = no
+
+[req_distinguished_name]
+C = CA
+ST = British Columbia
+L = Vancouver
+O = Luluemon Athletica Canada, Inc.
+CN = vault-node
+
+[v3_req]
+keyUsage = keyEncipherment, dataEncipherment
+extendedKeyUsage = serverAuth
+subjectAltName = @alt_names
+
+[alt_names]
+DNS.1 = ${cluster_address}
+DNS.2 = $vm_name
+DNS.3 = vault-node
+DNS.4 = localhost
+IP.1 = $local_ipv4
+IP.2 = 127.0.0.1
+EOF
+
+openssl req -new \
+  -sha256 \
+  -subj "/C=CA/ST=British Columbia/L=Vancouver/O=Lululemon Athletica Canada, Inc./CN=vault-node" \
+  -key /opt/vault/tls/vault-key.pem \
+  -out /opt/vault/tls/vault-cert.csr
+
+openssl x509 -req -days 3650 -in /opt/vault/tls/vault-cert.csr -CA /opt/vault/tls/rootCA.pem -CAkey /opt/vault/tls/rootCA.key -CAcreateserial -out /opt/vault/tls/vault-cert.pem -extfile /opt/vault/tls/vault-csr-config.conf -extensions v3_req
+
+openssl x509 -in /opt/vault/tls/vault-cert.pem -text -noout
+
+# vault-key.pem should be readable by the vault group only
+touch /opt/vault/tls/vault-key.pem
+chown root:vault /opt/vault/tls/vault-key.pem
+chmod 0640 /opt/vault/tls/vault-key.pem
+
+# Write to file PEM and Private Key
+cat > /opt/vault/tls/${cluster_address}.pem << EOF
+${ssl_certificate}
+EOF
+cat > /opt/vault/tls/${cluster_address}.key << EOF
+${ssl_private_key}
+EOF
+
+# copy license file from Storage Account to local storage on vault node
+az storage blob download --account-key ${account_key} --account-name ${account_name} --container-name ${license_container_name} --file /opt/vault/vault.hclic --name lululemon.hclic
+# vault.hclic should be readable by the vault group only
+chown root:vault /opt/vault/vault.hclic
+chmod 0640 /opt/vault/vault.hclic
+
+# Install telegraf agent for Telemetry logs to Splunk
+# influxdata-archive_compat.key GPG Fingerprint: 9D539D90D3328DC7D6C8D3B9D8FF8E1F7DF8B07E
+install_agent=1
+while [[ $${install_agent} -ne 0 ]]; do
+  sleep 10
+  apt-get update
+  curl -s https://repos.influxdata.com/influxdata-archive_compat.key > influxdata-archive_compat.key
+  echo '393e8779c89ac8d958f81f942f9ad7fb82a25e133faddaf92e15b16e6ac9ce4c influxdata-archive_compat.key' | sha256sum -c && cat influxdata-archive_compat.key | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/influxdata-archive_compat.gpg > /dev/null
+  echo 'deb [signed-by=/etc/apt/trusted.gpg.d/influxdata-archive_compat.gpg] https://repos.influxdata.com/debian stable main' | sudo tee /etc/apt/sources.list.d/influxdata.list
+  apt-get install -y telegraf
+  install_agent=$?
+done
+
+# Upgrade all packages
+apt upgrade -y
+
+# Login to Azure to get secrets
+az login --identity
+
+# Telegraf configuration file
+cat << EOF > /etc/telegraf/telegraf.conf
+# Global tags relate to and are available for use in Splunk searches
+# Of particular note are the index tag, which is required to match the
+# configured metrics index name and the cluster tag which should match the
+# value of Vault's cluster_name configuration option value.
+
+[global_tags]
+  index="vault-metrics"
+  datacenter = "${location}"
+  role       = "vault-server"
+  cluster    = "${name}-vault-azure"
+
+# Agent options around collection interval, sizes, jitter and so on
+[agent]
+  interval = "10s"
+  round_interval = true
+  metric_batch_size = 1000
+  metric_buffer_limit = 10000
+  collection_jitter = "0s"
+  flush_interval = "10s"
+  flush_jitter = "0s"
+  precision = ""
+  hostname = ""
+  omit_hostname = false
+
+# An input plugin that listens on UDP/8125 for statsd compatible telemetry
+# messages using Datadog extensions which are emitted by Vault
+[[inputs.statsd]]
+  protocol = "udp"
+  service_address = ":8125"
+  metric_separator = "."
+  datadog_extensions = true
+
+# An output plugin that can transmit metrics over HTTP to Splunk
+# You must specify a valid Splunk HEC token as the Authorization value
+[[outputs.http]]
+  url = "https://http-inputs-lululemon.splunkcloud.com:443/services/collector"
+  data_format="splunkmetric"
+  splunkmetric_hec_routing=true
+  [outputs.http.headers]
+    Content-Type = "application/json"
+    Authorization = "Splunk $(az keyvault secret show --name splunk-hec-token --vault-name ${key_vault} | jq -r .value)"
+
+# Read metrics about cpu usage using default configuration values
+[[inputs.cpu]]
+  percpu = true
+  totalcpu = true
+  collect_cpu_time = false
+  report_active = false
+
+# Read metrics about memory usage
+[[inputs.mem]]
+  # No configuration required
+
+# Read metrics about swap memory usage
+[[inputs.swap]]
+  # No configuration required
+
+# Read metrics about disk usage using default configuration values
+[[inputs.disk]]
+  ## By default stats will be gathered for all mount points.
+  ## Set mount_points will restrict the stats to only the specified mount points.
+  ## mount_points = ["/"]
+  ## Ignore mount points by filesystem type.
+  ignore_fs = ["tmpfs", "devtmpfs", "devfs", "iso9660", "overlay", "aufs", "squashfs"]
+
+[[inputs.diskio]]
+  # devices = ["sda", "sdb"]
+  # skip_serial_number = false
+
+[[inputs.kernel]]
+  # No configuration required
+
+[[inputs.linux_sysctl_fs]]
+  # No configuration required
+
+[[inputs.net]]
+  # Specify an interface or all
+  # interfaces = ["enp0s*"]
+
+[[inputs.netstat]]
+  # No configuration required
+
+[[inputs.processes]]
+  # No configuration required
+
+[[inputs.procstat]]
+ pattern = "(vault)"
+
+[[inputs.system]]
+  # No configuration required
+EOF
+
+# Start Telegraf service
+systemctl start telegraf
+
+# Upgrade all packages
+apt upgrade -y
+
+# Install Splunk UFW
+wget -O splunkforwarder-9.0.5-e9494146ae5c-Linux-x86_64.tgz "https://download.splunk.com/products/universalforwarder/releases/9.0.5/linux/splunkforwarder-9.0.5-e9494146ae5c-Linux-x86_64.tgz"
+tar -xvzf splunkforwarder-9.0.5-e9494146ae5c-Linux-x86_64.tgz -C /opt
+/opt/splunkforwarder/bin/splunk start --accept-license --answer-yes --no-prompt --seed-passwd $(az keyvault secret show --name splunk-admin-password --vault-name ${key_vault} | jq -r .value)
+az storage blob download --account-key ${account_key} --account-name ${account_name} --container-name ${splunk_container_name} --file /opt/splunkclouduf.spl --name splunkclouduf.spl
+/opt/splunkforwarder/bin/splunk install app /opt/splunkclouduf.spl -auth admin:$(az keyvault secret show --name splunk-admin-password --vault-name ${key_vault} | jq -r .value)
+mkdir -p /opt/splunkforwarder/etc/apps/lll_vault/default
+touch /opt/splunkforwarder/etc/apps/lll_vault/default/inputs.conf
+cat << EOF > /opt/splunkforwarder/etc/apps/lll_vault/default/inputs.conf
+[default]
+host = cloud-infra-vault-$(hostname)-azure
+[monitor:///var/log/vault/audit_to_splunk.log*]
+index=vault-audit
+sourcetype=hashicorp_vault_audit_log
+EOF
+
+cat << EOF > /etc/vault.d/vault.hcl
+disable_performance_standby = false
+ui = true
+disable_mlock = true
+
+storage "raft" {
+  path    = "/opt/vault/data"
+  node_id = "$vm_name"
+  retry_join {
+    auto_join = "provider=azure subscription_id=${subscription_id} resource_group=${resource_group} vm_scale_set=${vmss_name}"
+    auto_join_scheme = "https"
+    leader_tls_servername = "vault-node"
+    leader_ca_cert_file = "/opt/vault/tls/rootCA.pem"
+    leader_client_cert_file = "/opt/vault/tls/vault-cert.pem"
+    leader_client_key_file = "/opt/vault/tls/vault-key.pem"
+  }
+}
+
+cluster_addr = "https://$local_ipv4:8201"
+api_addr = "https://${cluster_address}:8200"
+
+listener "tcp" {
+  address                          = "0.0.0.0:8200"
+  x_forwarded_for_authorized_addrs = ["${vnet_cidr}"]
+  tls_disable                      = false
+  tls_cert_file                    = "/opt/vault/tls/vault-cert.pem"
+  tls_key_file                     = "/opt/vault/tls/vault-key.pem"
+  tls_client_ca_file               = "/opt/vault/tls/rootCA.pem"
+}
+
+listener "tcp" {
+  address                          = "0.0.0.0:8080"
+  x_forwarded_for_authorized_addrs = ["${vnet_cidr}"]
+  tls_disable                      = false
+  tls_cert_file                    = "/opt/vault/tls/${cluster_address}.pem"
+  tls_key_file                     = "/opt/vault/tls/${cluster_address}.key"
+  tls_disable_client_certs         = true
+}
+
+seal "azurekeyvault" {
+  tenant_id      = "${arm_tenant_id}"
+  client_id      = "${arm_client_id}"
+  client_secret  = "${arm_client_secret}"
+  vault_name     = "${az_vault_name}"
+  key_name       = "${az_vault_key}"
+}
+
+cluster_name = "${name}-vault"
+
+telemetry {
+  dogstatsd_addr = "localhost:8125"
+  enable_hostname_label = true
+  prometheus_retention_time = "30s"
+  disable_hostname = true
+}
+
+reporting {
+    license {
+        enabled = false
+   }
+}
+
+license_path = "/opt/vault/vault.hclic"
+
+EOF
+
+# vault.hcl should be readable by the vault group only
+chown root:root /etc/vault.d
+chown root:vault /etc/vault.d/vault.hcl
+chmod 640 /etc/vault.d/vault.hcl
+
+# ensure vault log directory is available
+mkdir -p /var/log/vault
+chown vault:vault /var/log/vault
+
+crudini --set /usr/lib/systemd/system/vault.service Service LogsDirectory /var/log/vault
+crudini --set /usr/lib/systemd/system/vault.service Service StandardOutput file:/var/log/vault/messages.log
+crudini --set /usr/lib/systemd/system/vault.service Service StandardError file:/var/log/vault/debug.log
+systemctl daemon-reload
+systemctl enable vault
+systemctl start vault
+systemctl restart telegraf
+
+echo "Setup Vault profile"
+cat <<EOF | sudo tee /etc/profile.d/vault.sh
+export VAULT_CACERT=/opt/vault/tls/rootCA.pem
+EOF
+
+echo export VAULT_CACERT=/opt/vault/tls/rootCA.pem >> /root/.profile
+
+# Setup to rotate logs hourly
+# Create separate directory to store hourly logrotate configuration files.
+mkdir /etc/logrotate.hourly.d
+
+# Create main logrotate configuration file that will read configuration files from designated directory.
+cat << EOF | sudo tee /etc/logrotate.hourly.conf
+# packages drop hourly log rotation information into this directory
+include /etc/logrotate.hourly.d
+EOF
+
+# Assign permissions
+chmod 644 /etc/logrotate.hourly.conf
+
+# Create cron configuration to execute logrotate every hour and read main hourly configuration file
+cat << EOF | sudo tee /etc/cron.hourly/logrotate
+#!/bin/bash
+test -x /usr/sbin/logrotate || exit 0
+/usr/sbin/logrotate /etc/logrotate.hourly.conf
+EOF
+
+# Assign permissions
+chmod 775 /etc/cron.hourly/logrotate
+
+# Create configuration file to hourly rotate specific log file inside above-mentioned directory
+cat <<EOF | sudo tee /etc/logrotate.hourly.d/vault
+/var/log/vault/*.log {
+    missingok
+    ifempty
+    dateext
+    dateformat -%Y%m%d%H
+    rotate 20
+    size 100M
+    maxsize 100M
+    create 0664 vault bin
+    postrotate
+      /usr/bin/systemctl reload vault 2> /dev/null || true
+    endscript
+}
+EOF
+systemctl restart logrotate
+
