@@ -1,0 +1,5 @@
+Error: retrieving Container "certs" (Account "Account \"vaultnpdenv\" (IsEdgeZone false / ZoneName \"\" / Subdomain Type \"blob\" / DomainSuffix \"core.windows.net\")"): executing request: unexpected status 403 (403 This request is not authorized to perform this operation.) with AuthorizationFailure: This request is not authorized to perform this operation. RequestId:7c3e8615-a01e-0064-0f96-9c83fe000000 Time:2025-03-24T08:26:22.0060575Z
+with azurerm_storage_container.certs
+on sa.tf line 55, in resource "azurerm_storage_container" "certs":
+Plain Text
+resource "azurerm_storage_container" "certs" {
