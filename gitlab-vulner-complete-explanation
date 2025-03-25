@@ -1,0 +1,147 @@
+### **Agenda: GitLab Vulnerability Alerts & Scanning Policies**  
+
+1️⃣ **Introduction**  
+   - Why do we need vulnerability alerts?  
+   - How does our infrastructure handle security scanning?  
+
+2️⃣ **Major Categories of Scanning**  
+   - **GitLab UI-Based Scanning**  
+   - **GitLab CI/CD Pipeline-Based Scanning**  
+
+3️⃣ **Types of Vulnerability Scanning & Sub-Divisions**  
+   - Static Application Security Testing (SAST)  
+   - Dynamic Application Security Testing (DAST)  
+   - Secret Detection  
+   - Dependency Scanning  
+   - Container Scanning  
+
+4️⃣ **How Scans are Triggered?**  
+   - UI-based triggers  
+   - CI/CD pipeline triggers  
+   - Scheduled scans vs. event-based scans  
+
+5️⃣ **Alert Triggering Mechanism**  
+   - Repository-specific vs. branch-specific scans  
+   - Why do some scans run only on **protected/default branches**?  
+   - Where are these policies defined?  
+
+6️⃣ **Branch Creation & Fix Recommendations**  
+   - Why is a new branch created with a random number?  
+   - Why do newly created branches sometimes **not** recommend fixes?  
+   - Is this due to the scanning policies we defined?  
+
+7️⃣ **Review of Our Five Scanning Policies**  
+   - Explanation of each scanning policy in our infrastructure  
+   - How they contribute to security compliance  
+
+8️⃣ **Conclusion & Recommendations**  
+   - Policy improvements for better vulnerability detection  
+   - Best practices for maintaining secure repositories  
+
+# **GitLab Vulnerability Alerts & Scanning Policies**
+
+## **1️⃣ Overview: Why Do We Have GitLab Vulnerability Alerts?**
+GitLab vulnerability scanning is implemented to detect security flaws in our repositories and ensure compliance with security best practices. These scans help:
+- Identify security vulnerabilities early in the development lifecycle.
+- Prevent high-risk vulnerabilities from being merged into protected branches.
+- Enforce security compliance by requiring approvals for identified vulnerabilities.
+- Automate security testing using GitLab’s **UI-based security scans** and **CI/CD pipeline-based security scans**.
+
+---
+## **2️⃣ Major Categories of Scanning Methods**
+### **1️⃣ GitLab UI-Based Scanning** 🔍
+- Uses **built-in GitLab security dashboards**.
+- Vulnerability reports are available in **GitLab’s Security & Compliance section**.
+- Can be **scheduled** to run periodically or **triggered manually**.
+
+### **2️⃣ GitLab CI/CD Pipeline-Based Scanning** 🏗️
+- Security scans are defined within **.gitlab-ci.yml**.
+- Triggers **automatically** as part of merge request (MR) pipelines.
+- Can block merges based on detected vulnerabilities.
+
+---
+## **3️⃣ Major Types of Scans & Their Sub-Divisions**
+### **1️⃣ UI-Based Scans**
+- **On-Demand Scanning:** Run manually from the security dashboard.
+- **Scheduled Scanning:** Configured to execute at specific time intervals.
+
+### **2️⃣ CI/CD Pipeline-Based Scans**
+- **SAST (Static Application Security Testing)** → Detects code vulnerabilities.
+- **DAST (Dynamic Application Security Testing)** → Scans running applications.
+- **Dependency Scanning** → Identifies risks in third-party dependencies.
+- **Container Scanning** → Checks for vulnerabilities in container images.
+- **Secret Detection** → Finds leaked credentials in code.
+
+---
+## **4️⃣ How Do Scans Get Triggered?** ⚡
+### **1️⃣ Automated Triggers**
+- **Merge Requests (MRs)** → Scans run whenever a new MR is created.
+- **Scheduled Scans** → UI-based security scans can be scheduled at regular intervals.
+- **CI/CD Pipeline Execution** → Defined in `.gitlab-ci.yml`, runs with every push.
+
+### **2️⃣ Manual Triggers**
+- **Security Dashboard Execution** → Allows scanning of an entire repository on demand.
+- **Developers Triggering Pipelines** → Scans can be executed manually by running a CI/CD job.
+
+---
+## **5️⃣ Policy-Based Scan Triggering: Repo vs. Branch Specific?**
+### **Branch-Specific Scanning Policies**
+- Some policies restrict scans to **default and protected branches** (e.g., `main`, `master`).
+- **Where do these policies exist?**
+  - Defined in `.gitlab-ci.yml` or **GitLab Security Policies**.
+  - Example: `branch_type: protected` → Only runs on protected branches.
+
+### **Repository-Wide Scanning**
+- Some scans apply to **all branches** but may exclude non-protected branches.
+- Example: Secret detection policies might scan **all MRs**, regardless of branch.
+
+---
+## **6️⃣ Why Are New Branches with Random Numbers Created?**
+- When GitLab detects vulnerabilities, it may create **auto-fix branches** with random names.
+- These branches **contain suggested fixes** but are not always generated if:
+  - **No automatic fix is available**.
+  - **The policy does not allow automatic patching**.
+
+---
+## **7️⃣ Why Don’t Some Newly Created Branches Recommend Fixes?**
+- Not all vulnerabilities have automatic fixes.
+- **Policy Restrictions:**
+  - If the policy only **reports** issues without enforcing fixes, no auto-fix branches appear.
+  - Example: Secret detection policy may **block MRs** but not generate fixes.
+- **Manual intervention** is required in such cases to apply security recommendations.
+
+---
+## **8️⃣ Breakdown of Our Five Key Security Policies**
+### **1️⃣ SAST Policy** (Static Analysis for Code Security) 🛠️
+- Blocks **critical code vulnerabilities**.
+- Triggers if **critical SAST issues** are detected.
+- Applies to **default & protected branches**.
+
+### **2️⃣ DAST Policy** (Runtime Security Testing) 🌐
+- Scans for security flaws **in live applications**.
+- Detects **exposed endpoints, XSS, SQL injection**.
+- Requires **pipeline approval** for high-severity issues.
+
+### **3️⃣ Dependency Scanning Policy** 🏗️
+- Checks for **known vulnerabilities in dependencies**.
+- Requires MR approval if issues exceed **10,000**.
+- Blocks merges if vulnerabilities are unresolved.
+
+### **4️⃣ Container Scanning Policy** 🐳
+- Analyzes Docker images for **known security risks**.
+- Uses GitLab’s container scanning engine.
+- Ensures only **secure images** are deployed.
+
+### **5️⃣ Secret Detection Policy** 🔑
+- Blocks MRs if **API keys, passwords, or secrets** are found.
+- Requires **at least one approval** if the scan detects issues.
+- Applies to **protected and default branches only**.
+
+---
+## **9️⃣ Summary & Key Takeaways**
+- **GitLab has two main security scan types:** UI-based (manual/scheduled) and CI/CD pipeline-based (automated).
+- **Vulnerability scans are triggered by MRs, CI/CD pipelines, or scheduled security jobs.**
+- **Some scans apply only to protected & default branches, which is controlled via policy definitions.**
+- **Auto-fix branches may or may not appear, depending on the policy and availability of fixes.**
+- **Our infrastructure enforces security through strict approval-based policies for critical vulnerabilities.**
+
