@@ -1,0 +1,64 @@
+# Allow access to all secret paths
+path "kv/*" {
+  capabilities = ["create", "read", "update", "delete", "list"]
+}
+
+# Allow access to all secret paths
+path "*" {
+  capabilities = ["create", "read", "update", "delete", "list", "sudo"]
+}
+
+# Allow access to all system paths
+path "sys/*" {
+  capabilities = ["create", "read", "update", "delete", "list"]
+}
+
+# Allow access to all authentication methods
+path "auth/*" {
+  capabilities = ["create", "read", "update", "delete", "list", "sudo"]
+}
+
+# Allow access to all policies
+path "sys/policies/*" {
+  capabilities = ["create", "read", "update", "delete", "list"]
+}
+
+# Allow access to manage audit devices
+path "sys/audit/*" {
+  capabilities = ["create", "read", "update", "delete", "list"]
+}
+
+# Allow access to manage leases
+path "sys/leases/*" {
+  capabilities = ["create", "read", "update", "delete", "list"]
+}
+
+# Allow access to manage control groups
+path "sys/control-group/*" {
+  capabilities = ["create", "read", "update", "delete", "list"]
+}
+
+# Allow access to manage namespaces (if enabled)
+path "sys/namespaces/*" {
+  capabilities = ["create", "read", "update", "delete", "list"]
+}
+
+# Allow managing Raft storage
+path "sys/storage/raft/*" {
+  capabilities = ["create", "read", "update", "delete", "list"]
+}
+
+# Allow managing identity entities and groups
+path "identity/*" {
+  capabilities = ["create", "read", "update", "delete", "list"]
+}
+
+# Allow access to replication configuration and status
+path "sys/replication/*" {
+  capabilities = ["create", "read", "update", "delete", "list"]
+}
+
+# Allow access to monitor Vault's health
+path "sys/health" {
+  capabilities = ["read"]
+}
