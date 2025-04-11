@@ -1,0 +1,65 @@
+Environment : Non-Prod
+Urgency : High
+Business Impact, if not addressed : Delays in autoscaling could affect processing of critical transactional data, leading to customer experience issues.
+Additional Info (URL / Screenshot / Log information) : Working Secret pulling from vault:-
+https://rancher.k8s.lllint.com/dashboard/c/c-m-q7zpqb6p/explorer/secret/oms-order-updates-sbx/noa-kafka-secrets#data
+
+Not working Secret not pulling from vault:-
+https://rancher.k8s.lllint.com/dashboard/c/c-m-q7zpqb6p/explorer/secret/oms-order-updates-perf/noa-kafka-secrets#data
+Auth Method : AppRole
+Description : We facing issues with Vault authentication and KEDA Kafka scaler integration in the following microservices:
+ omni-purch-digital-txn-updates-streamer
+ omni-purchase-digital-ord-updates-consumer
+ oms-narvar-orderapi
+ oms-transactional-email
+
+Issue 1: Vault Authentication Failure
+Affected Namespace:
+digital-myaccount-txn-updates-streamer-dev
+
+Error Observed:
+403 Permission Denied during Vault login via Kubernetes service account.
+
+Relevant Log:
+
+ini
+Copy
+Edit
+time=2025-04-10T08:26:07.631Z level=ERROR msg="failed to request new Vault token" app=vault-secrets-webhook 
+err="unable to log in with Kubernetes auth: Error making API request.
+
+URL: PUT https://npd-esms.lllint.com/v1/auth/ek8s-npd-west-kubernetes/login
+Code: 403. Errors:
+* permission denied"
+Vault Configuration in use:
+username: {{ printf "vault:app-kafka2-kv/data/eth/read/npd/%s/main-key#api_key" (lower .Values.kafkaVault.svcAccountName) | b64enc | quote }}
+password: {{ printf "vault:app-kafka2-kv/data/eth/read/npd/%s/main-key#api_secret" (lower .Values.kafkaVault.svcAccountName) | b64enc | quote }}
+This configuration is working successfully in other microservices (e.g., OTEOC, COC, NOA - SBX), which indicates a potential issue with:
+
+RoleBinding/ClusterRoleBinding for the service account
+
+Vault policy permissions
+
+Vault role configuration
+
+⚙️ Issue 2: KEDA Kafka Scaler Malfunction
+In the same set of microservices, I am seeing the following recurring issues with KEDA Kafka scaler:
+
+Secrets are not being pulled properly
+
+ScaledObject resources show a "ScaledObject check failed" status
+
+KEDA HPA is not taking over ownership from the standard HPA as expected
+
+All affected microservices are using the same configuration that works in other environments, which suggests the issue might be environment-specific or related to service-specific Vault/KEDA setup.
+
+
+
+🆘 Request:
+Requesting the PRE team's help to:
+
+Review Vault role, policy, and binding configurations for the affected namespaces/service accounts
+
+Investigate KEDA scaler behavior for these services in the affected environment
+
+Cross-check environment-specific differences vs. the working ones (OTEOC, COC, NOA - SBX)
